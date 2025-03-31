@@ -3,37 +3,54 @@
   "configurePresets": [
     {
       "name": "bsw-mcal-msp",
-      "displayName": "TI MSPM0G (LP-MSPM0G3507)",
+      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507)",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
       "binaryDir": "${sourceDir}/build/bsw-mcal-msp",
       "cacheVariables": {
-        "BOARD":         "lp_mspm0g3507",
-        "BSW_PLATFORM":  "bsw-mcal-msp",
-        "PYOCD_TARGET":  "MSPM0G3507",
-        "CMAKE_BUILD_TYPE": "Release"
+        "PLATFORM":          "target",
+        "BOARD":             "lp_mspm0g3507",
+        "BSW_PLATFORM":      "bsw-mcal-msp",
+        "PYOCD_TARGET":      "MSPM0G3507",
+        "BUILD_TESTS":       "OFF",
+        "CMAKE_BUILD_TYPE":  "Release"
       }
     },
     {
-      "name": "bsw-mcal-traveo",
-      "displayName": "Infineon TRAVEO II",
-      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
-      "binaryDir": "${sourceDir}/build/bsw-mcal-traveo",
+      "name": "host-test",
+      "displayName": "Unit Test — Host (Windows MinGW / Linux GCC)",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-host.cmake",
+      "binaryDir": "${sourceDir}/build/host-test",
       "cacheVariables": {
-        "BOARD":         "kit_t2g_b_e_1m",
-        "BSW_PLATFORM":  "bsw-mcal-traveo",
-        "PYOCD_TARGET":  "CYT4BB7CEE",
-        "CMAKE_BUILD_TYPE": "Release"
+        "PLATFORM":         "posix",
+        "BUILD_TESTS":      "ON",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "renode-sil",
+      "displayName": "SIL — Renode ARM Emulator",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/renode-sil",
+      "cacheVariables": {
+        "PLATFORM":         "renode",
+        "BOARD":            "lp_mspm0g3507",
+        "BSW_PLATFORM":     "bsw-mcal-msp",
+        "BUILD_TESTS":      "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     }
   ],
   "buildPresets": [
+    { "name": "bsw-mcal-msp",  "configurePreset": "bsw-mcal-msp" },
+    { "name": "host-test",     "configurePreset": "host-test" },
+    { "name": "renode-sil",    "configurePreset": "renode-sil" }
+  ],
+  "testPresets": [
     {
-      "name": "bsw-mcal-msp",
-      "configurePreset": "bsw-mcal-msp"
-    },
-    {
-      "name": "bsw-mcal-traveo",
-      "configurePreset": "bsw-mcal-traveo"
+      "name": "host-test",
+      "configurePreset": "host-test",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
     }
   ]
 }
