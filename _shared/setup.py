@@ -14,6 +14,7 @@ import json
 import os
 import platform
 import shutil
+import ssl
 import subprocess
 import sys
 import urllib.request
@@ -51,12 +52,15 @@ MINGW_MSYS2_PATH = Path("C:/msys64")
 MINGW_UCRT_BIN   = MINGW_MSYS2_PATH / "ucrt64/bin"
 
 # ── Renode ────────────────────────────────────────────────────────────────
-RENODE_VERSION = "1.15.2"
+# v1.16.0 is the first release with a Windows portable asset; older tags
+# ship only .msi for Windows.
+RENODE_VERSION = "1.16.0"
 RENODE_URLS = {
-    "Windows": f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode_win64-portable.zip",
-    "Linux":   f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode_{RENODE_VERSION}_amd64.deb",
-    "Darwin":  f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode-macos-portable.zip",
+    "Windows": f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode-{RENODE_VERSION}.windows-portable-dotnet.zip",
+    "Linux":   f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode-{RENODE_VERSION}.linux-portable.tar.gz",
+    "Darwin":  f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode-{RENODE_VERSION}-dotnet.osx-arm64-portable.dmg",
 }
+RENODE_WINGET_ID = "Renode.Renode"
 RENODE_LOCAL_DIR = PROJECT_ROOT / "_shared" / "tools" / "renode"
 
 # ── Helpers ───────────────────────────────────────────────────────────────
@@ -80,8 +84,34 @@ def _progress(block, block_size, total):
     bar  = "█" * (pct // 5) + "░" * (20 - pct // 5)
     print(f"\r  [{bar}] {pct}%", end="", flush=True)
 
+_SSL_CTX = None
+
+def _ensure_ssl_context():
+    """Return an SSLContext using certifi's CA bundle.
+    Windows builds of CPython ship without a usable system CA store, so
+    HTTPS downloads from ARM / GitHub fail with SSLCertVerificationError.
+    Lazily pip-installs certifi on first use."""
+    global _SSL_CTX
+    if _SSL_CTX is not None:
+        return _SSL_CTX
+    try:
+        import certifi
+    except ImportError:
+        log("Installing certifi for SSL CA verification...")
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--quiet", "certifi"],
+            check=True
+        )
+        import certifi
+    _SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+    return _SSL_CTX
+
 def download(url, dest):
     log(f"Downloading {url.split('/')[-1]} ...")
+    ctx = _ensure_ssl_context()
+    https_handler = urllib.request.HTTPSHandler(context=ctx)
+    opener = urllib.request.build_opener(https_handler)
+    urllib.request.install_opener(opener)
     urllib.request.urlretrieve(url, dest, reporthook=_progress)
     print()
 
@@ -92,7 +122,28 @@ def extract(archive, dest):
             z.extractall(dest)
     else:
         with tarfile.open(archive) as t:
-            t.extractall(dest)
+            # filter='data' silences the Py3.14 deprecation and is safer
+            try:
+                t.extractall(dest, filter="data")
+            except TypeError:
+                t.extractall(dest)
+
+def flatten_single_top(dest):
+    """If `dest` contains exactly one subdirectory (typical for vendor archives
+    like ARM GCC / Renode), move its contents up into `dest` itself so callers
+    can use a stable layout (e.g. dest/bin/...)."""
+    entries = [p for p in Path(dest).iterdir()]
+    if len(entries) == 1 and entries[0].is_dir():
+        top = entries[0]
+        for item in list(top.iterdir()):
+            target = Path(dest) / item.name
+            if target.exists():
+                if target.is_dir():
+                    shutil.rmtree(target)
+                else:
+                    target.unlink()
+            shutil.move(str(item), str(target))
+        top.rmdir()
 
 def load_platforms():
     with open(PLATFORMS_JSON) as f:
@@ -118,17 +169,31 @@ def select_platform(platforms, arg=None):
 
 # ── Step 1: BSW submodule ─────────────────────────────────────────────────
 
+def _has_gitlink(repo_root, path):
+    """Return True iff `path` is registered as a submodule gitlink (mode 160000)
+    in the index of the git repo rooted at `repo_root`."""
+    res = subprocess.run(
+        ["git", "ls-files", "--stage", "--", path],
+        cwd=repo_root, capture_output=True, text=True
+    )
+    if res.returncode != 0:
+        return False
+    line = res.stdout.strip()
+    return line.startswith("160000")
+
 def init_bsw():
     if (BSW_PATH / ".git").exists():
         ok("BSW submodule already initialized")
         return
     log("Initializing BSW submodule...")
-    gitmodules = PROJECT_ROOT / ".gitmodules"
-    if gitmodules.exists() and '[submodule "bsw"]' in gitmodules.read_text():
+    if _has_gitlink(PROJECT_ROOT, "bsw"):
         run(["git", "submodule", "update", "--init", "bsw"], cwd=PROJECT_ROOT)
     else:
-        run(["git", "submodule", "add", "--branch", "main",
-             BSW_REPO_URL, "bsw"], cwd=PROJECT_ROOT)
+        # Parent template repo lacks a committed gitlink for `bsw` even though
+        # .gitmodules declares it. Clone the BSW repo directly instead.
+        warn("Parent repo has no gitlink for 'bsw' - cloning directly")
+        BSW_PATH.parent.mkdir(parents=True, exist_ok=True)
+        run(["git", "clone", "--branch", "main", BSW_REPO_URL, str(BSW_PATH)])
     ok("BSW submodule ready")
 
 # ── Step 2: Platform MCAL submodule ──────────────────────────────────────
@@ -140,7 +205,32 @@ def init_platform(cfg):
         ok(f"Platform submodule '{sub}' already initialized")
         return
     log(f"Initializing platform submodule: {sub}")
-    run(["git", "submodule", "update", "--init", sub], cwd=BSW_PATH)
+    if _has_gitlink(BSW_PATH, sub):
+        run(["git", "submodule", "update", "--init", sub], cwd=BSW_PATH)
+    else:
+        # BSW repo declares the platform in .gitmodules but no committed gitlink.
+        # Parse the url from .gitmodules and clone directly.
+        gm = (BSW_PATH / ".gitmodules").read_text()
+        section = f'[submodule "{sub}"]'
+        url = None
+        in_section = False
+        for line in gm.splitlines():
+            stripped = line.strip()
+            if stripped == section:
+                in_section = True
+                continue
+            if in_section:
+                if stripped.startswith("["):
+                    break
+                if stripped.startswith("url"):
+                    url = stripped.split("=", 1)[1].strip()
+                    break
+        if not url:
+            err(f"Could not find URL for platform '{sub}' in BSW .gitmodules")
+            sys.exit(1)
+        warn(f"BSW repo has no gitlink for '{sub}' - cloning {url}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        run(["git", "clone", "--branch", "main", url, str(target)])
     ok(f"Platform '{sub}' ready")
 
 # ── Step 3: ARM GCC (firmware cross-compiler) ─────────────────────────────
@@ -161,8 +251,15 @@ def install_arm_gcc():
     archive = TOOLS_DIR / url.split("/")[-1]
     download(url, archive)
     extract(archive, dest_dir)
+    # Vendor archives wrap everything in a versioned top-level dir
+    # (e.g. arm-gnu-toolchain-13.3.rel1-mingw-w64-i686-arm-none-eabi/).
+    # Flatten so we get dest_dir/bin/arm-none-eabi-gcc directly.
+    flatten_single_top(dest_dir)
     archive.unlink(missing_ok=True)
-    ok("ARM GCC installed")
+    if not gcc_bin.exists():
+        warn(f"ARM GCC binary not found at expected path after extract: {gcc_bin}")
+    else:
+        ok("ARM GCC installed")
 
 # ── Step 4: MinGW-w64 (Windows only — host compiler for unit tests) ───────
 
@@ -180,9 +277,13 @@ def install_mingw_windows():
         # Give MSYS2 a moment then install ucrt64 GCC
         msys2_bash = MINGW_MSYS2_PATH / "usr/bin/bash.exe"
         if msys2_bash.exists():
+            # Sync package DB first (fresh MSYS2 has no DB yet)
+            run([str(msys2_bash), "-lc", "pacman -Sy --noconfirm"], check=False)
             run([str(msys2_bash), "-lc",
-                 "pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc "
-                 "mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja"])
+                 "pacman -S --noconfirm --needed "
+                 "mingw-w64-ucrt-x86_64-gcc "
+                 "mingw-w64-ucrt-x86_64-cmake "
+                 "mingw-w64-ucrt-x86_64-ninja"])
             ok(f"MinGW-w64 installed at {MINGW_UCRT_BIN}")
         else:
             warn("MSYS2 installed but bash not found yet. Restart terminal and re-run.")
@@ -197,15 +298,16 @@ def install_renode():
     if shutil.which("renode") or shutil.which("renode-test"):
         ok("Renode already in PATH")
         return
-    # Windows: try winget first
+    # Windows: try winget first (package id is Renode.Renode, not Antmicro.Renode)
     if OS == "Windows":
-        log("Installing Renode via winget...")
-        result = run(["winget", "install", "Antmicro.Renode",
+        log(f"Installing Renode via winget ({RENODE_WINGET_ID})...")
+        result = run(["winget", "install", "--id", RENODE_WINGET_ID,
                       "--silent", "--accept-source-agreements",
                       "--accept-package-agreements"], check=False)
         if result.returncode == 0:
             ok("Renode installed via winget")
             return
+        warn("winget install Renode failed - falling back to portable zip")
     # Fallback: download portable zip
     url = RENODE_URLS.get(OS)
     if not url:
@@ -216,6 +318,7 @@ def install_renode():
     download(url, archive)
     if archive.suffix == ".zip":
         extract(archive, RENODE_LOCAL_DIR)
+        flatten_single_top(RENODE_LOCAL_DIR)
         archive.unlink(missing_ok=True)
         ok(f"Renode (portable) installed at {RENODE_LOCAL_DIR}")
         print(f"  Add to PATH: {RENODE_LOCAL_DIR}")
@@ -257,14 +360,16 @@ def verify():
         ["gcc",               "--version"],
         ["cmake",             "--version"],
         ["ninja",             "--version"],
-        ["pyocd",             "--version"],
+        # pyocd is a pip console script; invoking via module avoids PATH issues
+        [sys.executable, "-m", "pyocd", "--version"],
     ]
     for cmd in checks:
+        label = cmd[0] if cmd[0] != sys.executable else "pyocd"
         try:
             out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True).split("\n")[0]
-            ok(out.strip())
+            ok(f"{label}: {out.strip()}")
         except Exception:
-            warn(f"{cmd[0]} — not found (may need PATH update)")
+            warn(f"{label} — not found (may need PATH update)")
 
     renode_found = shutil.which("renode") or shutil.which("renode-test")
     if renode_found:

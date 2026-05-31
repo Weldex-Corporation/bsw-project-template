@@ -5,46 +5,39 @@ Test Teardown     Test Teardown
 Resource          ${RENODEKEYWORDS}
 
 *** Variables ***
-${PLATFORM}    ${CURDIR}/lp_mspm0g3507.repl
-${ELF}         ${CURDIR}/../build/renode-sil/bsw_project_template.elf
-${LED_GPIO}    sysbus.gpioA
-${LED_PIN}     0
+${PLATFORM}      ${CURDIR}/lp_mspm0g3507.repl
+${ELF}           ${CURDIR}/../build/renode-sil/bsw_project_template.elf
+# Diagnostic byte exposed by firmware: 0xFF when LED ON, 0x00 when LED OFF.
+${LED_ADDR}      0x400A00F8
 
 *** Test Cases ***
 LED Should Start OFF
-    [Documentation]    LED_GREEN (PA0) must be LOW before first tick
-    Create Machine
-    Load ELF
-    Start Emulation
-    Sleep    0.1s
-    ${level}=    Execute Command    ${LED_GPIO} GetGPIO ${LED_PIN}
-    Should Be Equal As Integers    ${level}    0
+    [Documentation]    Before the first 500 ms tick LED_GREEN must be LOW
+    Prepare Machine
+    Execute Command    emulation RunFor "00:00:00.050"
+    LED Should Match    0x00
 
 LED Should Toggle ON After 500 ms
-    [Documentation]    After 500 ms of simulated time LED_GREEN must go HIGH
-    Create Machine
-    Load ELF
-    Start Emulation
-    Execute Command    emulation RunFor "00:00:00.500"
-    ${level}=    Execute Command    ${LED_GPIO} GetGPIO ${LED_PIN}
-    Should Be Equal As Integers    ${level}    1
+    [Documentation]    After 500 ms of simulated time LED_GREEN must be HIGH
+    Prepare Machine
+    Execute Command    emulation RunFor "00:00:00.520"
+    LED Should Match    0xFF
 
 LED Should Complete Full 1 Hz Cycle
     [Documentation]    After 1000 ms LED_GREEN must be LOW again (full period)
-    Create Machine
-    Load ELF
-    Start Emulation
-    Execute Command    emulation RunFor "00:00:01.000"
-    ${level}=    Execute Command    ${LED_GPIO} GetGPIO ${LED_PIN}
-    Should Be Equal As Integers    ${level}    0
+    Prepare Machine
+    Execute Command    emulation RunFor "00:00:01.020"
+    LED Should Match    0x00
 
 *** Keywords ***
-Create Machine
+Prepare Machine
     Execute Command    mach create "lp_mspm0g3507"
     Execute Command    machine LoadPlatformDescription @${PLATFORM}
-
-Load ELF
     Execute Command    sysbus LoadELF @${ELF}
 
-Start Emulation
-    Execute Command    start
+LED Should Match
+    [Arguments]    ${expected_hex}
+    # Renode's ReadByte returns "0x00\n\n" or "0xff\n\n". Should Contain is
+    # substring-based, so trailing whitespace and the 0x prefix don't matter.
+    ${value}=    Execute Command    sysbus ReadByte ${LED_ADDR}
+    Should Contain    ${value}    ${expected_hex}
