@@ -1,6 +1,6 @@
 build/
-_shared/tools/compilers/
-_shared/tools/sdk/
+_shared/tools/
+_shared/__pycache__/
 *.elf
 *.bin
 *.hex
@@ -8,3 +8,10 @@ _shared/tools/sdk/
 .vscode/
 .cache/
 CMakeUserPresets.json
+
+# renode-test artefacts
+snapshots/
+logs/
+robot_output.xml
+log.html
+report.html

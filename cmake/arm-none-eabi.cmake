@@ -34,11 +34,19 @@ if(_TC_ROOT)
     message(STATUS "ARM GCC toolchain: ${_TC_ROOT}")
 endif()
 
-set(CMAKE_C_COMPILER   "${_TC_BIN}arm-none-eabi-gcc")
-set(CMAKE_CXX_COMPILER "${_TC_BIN}arm-none-eabi-g++")
-set(CMAKE_ASM_COMPILER "${_TC_BIN}arm-none-eabi-gcc")
-set(CMAKE_OBJCOPY      "${_TC_BIN}arm-none-eabi-objcopy")
-set(CMAKE_SIZE         "${_TC_BIN}arm-none-eabi-size")
+# Windows ships GCC as *.exe; explicit absolute paths must include the
+# extension or project()/enable_language() rejects them.
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    set(_TC_EXE ".exe")
+else()
+    set(_TC_EXE "")
+endif()
+
+set(CMAKE_C_COMPILER   "${_TC_BIN}arm-none-eabi-gcc${_TC_EXE}")
+set(CMAKE_CXX_COMPILER "${_TC_BIN}arm-none-eabi-g++${_TC_EXE}")
+set(CMAKE_ASM_COMPILER "${_TC_BIN}arm-none-eabi-gcc${_TC_EXE}")
+set(CMAKE_OBJCOPY      "${_TC_BIN}arm-none-eabi-objcopy${_TC_EXE}")
+set(CMAKE_SIZE         "${_TC_BIN}arm-none-eabi-size${_TC_EXE}")
 
 # Cortex-M0+ flags (MSPM0G series)
 set(CMAKE_C_FLAGS_INIT

@@ -4,10 +4,11 @@
     {
       "name": "bsw-mcal-msp",
       "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507)",
+      "generator": "Ninja",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
       "binaryDir": "${sourceDir}/build/bsw-mcal-msp",
       "cacheVariables": {
-        "PLATFORM":          "target",
+        "PLATFORM":          "mspm0",
         "BOARD":             "lp_mspm0g3507",
         "BSW_PLATFORM":      "bsw-mcal-msp",
         "PYOCD_TARGET":      "MSPM0G3507",
@@ -18,6 +19,7 @@
     {
       "name": "host-test",
       "displayName": "Unit Test — Host (Windows MinGW / Linux GCC)",
+      "generator": "Ninja",
       "toolchainFile": "${sourceDir}/cmake/toolchain-host.cmake",
       "binaryDir": "${sourceDir}/build/host-test",
       "cacheVariables": {
@@ -29,6 +31,7 @@
     {
       "name": "renode-sil",
       "displayName": "SIL — Renode ARM Emulator",
+      "generator": "Ninja",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
       "binaryDir": "${sourceDir}/build/renode-sil",
       "cacheVariables": {
