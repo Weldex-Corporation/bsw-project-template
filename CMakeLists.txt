@@ -64,13 +64,17 @@ if(NOT BUILD_TESTS)
     elseif(APP_MODEL STREQUAL "missing_periph_test")
         # UART/DMA/WWDT/TIMG7/TIMG8 SIL test — raw MMIO, no driverlib or BSW framework.
         set(_app_sources src/main_missing_periph_test.c)
+    elseif(APP_MODEL STREQUAL "timg_test")
+        # TIMG0/TIMG6/TIMG12 IRQ model test + ADC1 — raw MMIO.
+        set(_app_sources src/main_timg_test.c)
     else()
         set(_app_sources src/main_baremetal.c)
     endif()
     set(_is_periph_test OFF)
     if(APP_MODEL STREQUAL "periph_test"
        OR APP_MODEL STREQUAL "fullperiph_test"
-       OR APP_MODEL STREQUAL "missing_periph_test")
+       OR APP_MODEL STREQUAL "missing_periph_test"
+       OR APP_MODEL STREQUAL "timg_test")
         set(_is_periph_test ON)
     endif()
     if(NOT _is_periph_test)

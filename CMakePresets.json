@@ -108,6 +108,22 @@
       }
     },
     {
+      "name": "renode-driverlib-timg-test",
+      "displayName": "SIL — Renode TIMG0/TIMG6/TIMG12 IRQ model test + ADC1",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/renode-driverlib-timg-test",
+      "cacheVariables": {
+        "PLATFORM":         "mspm0",
+        "BOARD":            "lp_mspm0g3507",
+        "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "timg_test",
+        "PYOCD_TARGET":     "MSPM0G3507",
+        "BUILD_TESTS":      "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
       "name": "renode-driverlib-fullperiph",
       "displayName": "SIL — Renode all-peripheral model test (raw MMIO)",
       "generator": "Ninja",
@@ -149,7 +165,8 @@
     { "name": "renode-driverlib",         "configurePreset": "renode-driverlib" },
     { "name": "renode-driverlib-periph",         "configurePreset": "renode-driverlib-periph" },
     { "name": "renode-driverlib-fullperiph",     "configurePreset": "renode-driverlib-fullperiph" },
-    { "name": "renode-driverlib-missing-periph", "configurePreset": "renode-driverlib-missing-periph" }
+    { "name": "renode-driverlib-missing-periph", "configurePreset": "renode-driverlib-missing-periph" },
+    { "name": "renode-driverlib-timg-test",     "configurePreset": "renode-driverlib-timg-test" }
   ],
   "testPresets": [
     {
