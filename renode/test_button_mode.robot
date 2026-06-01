@@ -19,7 +19,7 @@ Resource          ${RENODEKEYWORDS}
 *** Variables ***
 ${ELF}          ${CURDIR}/../build/renode-sil/bsw_project_template.elf
 ${BOARD_DIR}    ${CURDIR}/../boards/lp_mspm0g3507
-${MODELS_DIR}   ${CURDIR}/../bsw/tools/hw_smoke/renode/models
+${MODELS_DIR}   ${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/models
 ${DOUT_ADDR}    0x400A0080
 ${DIN_ADDR}     0x400A0084
 ${LED_PIN}      0
@@ -67,7 +67,7 @@ Prepare Machine
     [Documentation]    Fresh machine + ELF for every test.
     Reset Emulation
     Execute Command    mach create "lp_mspm0g3507"
-    Execute Command    machine LoadPlatformDescription @${CURDIR}/../bsw/tools/hw_smoke/renode/mspm0g3507.repl
+    Execute Command    machine LoadPlatformDescription @${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/mspm0g3507.repl
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_wwdt.py 0x40080000 0x1200 True "wwdt0"
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_wwdt.py 0x40082000 0x1200 True "wwdt1"
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_timg8.py 0x40090000 0x2000 True "timg8"
