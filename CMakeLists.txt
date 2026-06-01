@@ -61,6 +61,7 @@ if(NOT BUILD_TESTS)
     # Shared application sources (both models)
     list(APPEND _app_sources
         src/app_tasks.c
+        src/app_mode.c
         src/led_blink.c
     )
     if(NOT PLATFORM STREQUAL "posix")
