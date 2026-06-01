@@ -55,36 +55,67 @@ if(NOT BUILD_TESTS)
     if(NOT PLATFORM STREQUAL "posix")
         list(APPEND _app_sources src/app_stubs.c)
     endif()
-    # Board layer (PLATFORM=mspm0 only for now): provides SYSCFG_DL_init
-    # overrides + SysTick handler for the chosen ${BOARD}.
-    if(PLATFORM STREQUAL "mspm0")
+    # Board layer (mspm0 + renode SIL both target the MSPM0G3507 silicon
+    # model). Provides:
+    #   - Cortex-M0+ startup file (vector table, Reset_Handler) from SDK
+    #   - SDK SysConfig + board syscfg_lp.c overrides
+    #   - Standalone linker script (vector table at 0x00000000, SRAM at
+    #     0x20200000) — shared with the LP launchpad rgb_led_pwm demo.
+    # Renode SIL uses the same startup and linker script as mspm0, but
+    # links mcal_renode instead of mcal_msp/driverlib for HW access.
+    set(_msp_dir "${CMAKE_SOURCE_DIR}/bsw/platform/bsw-mcal-msp")
+    if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
         set(_board_dir "${CMAKE_SOURCE_DIR}/boards/${BOARD}")
-        if(EXISTS "${_board_dir}/syscfg_lp.c")
-            list(APPEND _app_sources "${_board_dir}/syscfg_lp.c")
-        else()
+        if(NOT EXISTS "${_board_dir}/syscfg_lp.c")
             message(FATAL_ERROR
                 "Board file missing: ${_board_dir}/syscfg_lp.c\n"
-                "Each mspm0 BOARD must ship its own SYSCFG_DL_init overrides.")
+                "Each mspm0g* BOARD must ship its own SYSCFG_DL_init overrides.")
         endif()
+        list(APPEND _app_sources
+            "${_msp_dir}/sdk/ti/devices/msp/m0p/startup_system_files/gcc/startup_mspm0g350x_gcc.c"
+            "${_msp_dir}/system/ti_msp_dl_config.c"
+            "${_board_dir}/syscfg_lp.c")
         # TI MSPM0 driverlib — bsw-mcal-msp ships the headers and .c files
         # but does not compile them. Build a static library here so the
         # firmware can resolve DL_Common_delayCycles, DL_Timer_*, DL_GPIO_*
-        # etc. that mcal_msp and the board init reference.
-        set(_msp_driverlib_dir
-            "${CMAKE_SOURCE_DIR}/bsw/platform/bsw-mcal-msp/sdk/ti/driverlib")
-        file(GLOB _msp_driverlib_sources "${_msp_driverlib_dir}/*.c")
+        # etc. that the SDK SysConfig and syscfg_lp.c reference.
+        file(GLOB _msp_driverlib_sources "${_msp_dir}/sdk/ti/driverlib/*.c")
         add_library(ti_driverlib STATIC ${_msp_driverlib_sources})
         target_include_directories(ti_driverlib PUBLIC
-            "${CMAKE_SOURCE_DIR}/bsw/platform/bsw-mcal-msp/sdk"
-            "${CMAKE_SOURCE_DIR}/bsw/platform/bsw-mcal-msp/sdk/third_party/CMSIS/Core/Include"
-            "${CMAKE_SOURCE_DIR}/bsw/platform/bsw-mcal-msp/sdk/ti/devices"
-            "${CMAKE_SOURCE_DIR}/bsw/platform/bsw-mcal-msp/sdk/ti/driverlib")
+            "${_msp_dir}/sdk"
+            "${_msp_dir}/sdk/third_party/CMSIS/Core/Include"
+            "${_msp_dir}/sdk/ti/devices"
+            "${_msp_dir}/sdk/ti/driverlib")
         target_compile_definitions(ti_driverlib PUBLIC
             PLATFORM_MSPM0 __MSPM0G3507__ __ARM_ARCH_6M__ __FPU_PRESENT=0)
     endif()
-    add_executable(${PROJECT_NAME} ${_app_sources})
     if(PLATFORM STREQUAL "mspm0")
+        # mcal_msp's Mcu_Hw.c owns SysTick_Handler. syscfg_lp.c may
+        # provide a strong override; mark Mcu_Hw's version weak to avoid
+        # multiple-definition under static-archive linking.
+        target_compile_definitions(mcal_msp PUBLIC LP_MSPM0G3507 MCU_HW_SYSTICK_WEAK)
+    endif()
+    add_executable(${PROJECT_NAME} ${_app_sources})
+    if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
+        # Include paths for syscfg_lp.c + ti_msp_dl_config.c + startup file
+        # to find ti_msp_dl_config.h and the SDK headers.
+        target_include_directories(${PROJECT_NAME} PRIVATE
+            "${_msp_dir}/system"
+            "${_msp_dir}/legacy/hal"
+            "${_msp_dir}/sdk"
+            "${_msp_dir}/sdk/third_party/CMSIS/Core/Include"
+            "${_msp_dir}/sdk/ti/devices"
+            "${_msp_dir}/sdk/ti/driverlib")
+        target_compile_definitions(${PROJECT_NAME} PRIVATE
+            PLATFORM_MSPM0 __MSPM0G3507__ __ARM_ARCH_6M__ __FPU_PRESENT=0)
         target_link_libraries(${PROJECT_NAME} PRIVATE ti_driverlib)
+        set(_linker_script
+            "${_msp_dir}/examples/rgb_led_pwm/mspm0g3507.ld")
+        target_link_options(${PROJECT_NAME} PRIVATE
+            "-T${_linker_script}"
+            "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map")
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            LINK_DEPENDS "${_linker_script}")
     endif()
     # Application links the BSW framework + the True MCAL implementation for
     # the chosen PLATFORM. mcal_hal is BSW-internal legacy (HAL-wrapping); new

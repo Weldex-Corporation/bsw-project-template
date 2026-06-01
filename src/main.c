@@ -11,30 +11,30 @@
  * (e.g. DioConf_DioChannel_LED_GREEN) once a Dio configuration is added. */
 #define LED_GREEN_CHANNEL   ((Dio_ChannelType)0u)
 
-#ifndef DELAY_LOOPS_PER_MS
-#define DELAY_LOOPS_PER_MS  1000u
-#endif
-
-static void busy_delay_ms(uint32_t ms)
-{
-    volatile uint32_t i;
-    for (uint32_t m = 0u; m < ms; ++m) {
-        for (i = 0u; i < DELAY_LOOPS_PER_MS; ++i) { /* spin */ }
-    }
-}
-
 int main(void)
 {
     Mcu_Init();
     Dio_Init(NULL_PTR);
     LedBlink_Init();
 
+    /* Tick-driven main loop: derive elapsed_ms from Mcu_GetTickMs() so the
+     * firmware advances in step with the real (or simulated) clock. On the
+     * real silicon Mcu_GetTickMs() reads the SysTick counter; on Renode it
+     * reads the TIM0 VTIME_MS register, which is bound to virtual time. */
+    uint32 last_tick = Mcu_GetTickMs();
+
     for (;;)
     {
-        LedBlink_Tick(10u);
-        Dio_WriteChannel(LED_GREEN_CHANNEL,
-                         (Dio_LevelType)LedBlink_GetState());
-        busy_delay_ms(10u);
+        uint32 now = Mcu_GetTickMs();
+        uint32 dt  = now - last_tick;
+        if (dt > 0u)
+        {
+            LedBlink_Tick(dt);
+            Dio_WriteChannel(LED_GREEN_CHANNEL,
+                             (Dio_LevelType)LedBlink_GetState());
+            last_tick = now;
+        }
+        /* idle until the next tick */
     }
 
     return 0;

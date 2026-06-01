@@ -14,7 +14,10 @@ nvic: IRQControllers.NVIC @ sysbus 0xE000E000
 flash: Memory.MappedMemory @ sysbus 0x00000000
     size: 0x00020000
 
-sram: Memory.MappedMemory @ sysbus 0x20000000
+// SRAM origin matches the SDK linker script mspm0g3507.ld (0x20200000),
+// NOT 0x20000000 — that was the previous placeholder before the board
+// layer was hooked up.
+sram: Memory.MappedMemory @ sysbus 0x20200000
     size: 0x00008000
 
 // GPIOA — modelled as plain MappedMemory so the SIL test can read PA0
@@ -23,3 +26,13 @@ sram: Memory.MappedMemory @ sysbus 0x20000000
 // MSPM0G3507 GPIOA base: 0x400A0000, size 0x400.
 gpioA: Memory.MappedMemory @ sysbus 0x400A0000
     size: 0x00000400
+
+// VTIME_MS — single 4-byte register at 0x4000A020 that returns the
+// elapsed simulated wall-clock time in milliseconds. mcal_renode
+// Mcu_GetTickMs() reads this, so `emulation RunFor 500 ms` in the
+// .robot test makes the firmware's notion of time match sim time.
+// One-liner script keeps the .repl self-contained.
+tim0_vtime_ms: Python.PythonPeripheral @ sysbus 0x4000A020
+    size: 0x4
+    initable: true
+    script: "request.Value = int(self.GetMachine().ElapsedVirtualTime.TimeElapsed.TotalMilliseconds)"

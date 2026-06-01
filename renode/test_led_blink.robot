@@ -22,14 +22,20 @@ LED Should Start OFF
     Should Be Equal As Integers    ${level}    0
 
 LED Should Toggle ON After 500 ms
-    [Documentation]    After BLINK_PERIOD_MS = 500 ms, PA0 must be HIGH.
-    Execute Command    emulation RunFor "00:00:00.500"
+    [Documentation]    After BLINK_PERIOD_MS = 500 ms PA0 must be HIGH.
+    ...                Adds a small RunFor margin (100 ms) so the polling
+    ...                main loop has time to observe Mcu_GetTickMs >= 500
+    ...                and to run the Dio_WriteChannel store after the
+    ...                state toggle.
+    Execute Command    emulation RunFor "00:00:00.600"
     ${level}=    Read LED Level
     Should Be Equal As Integers    ${level}    1
 
 LED Should Complete Full 1 Hz Cycle
-    [Documentation]    After 1000 ms PA0 must return LOW (one full period).
-    Execute Command    emulation RunFor "00:00:01.000"
+    [Documentation]    After ~1 s PA0 must return LOW (one full period).
+    ...                Same RunFor margin as the 500 ms case so the second
+    ...                toggle is captured.
+    Execute Command    emulation RunFor "00:00:01.100"
     ${level}=    Read LED Level
     Should Be Equal As Integers    ${level}    0
 
