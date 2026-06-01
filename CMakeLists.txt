@@ -58,10 +58,17 @@ if(NOT BUILD_TESTS)
     elseif(APP_MODEL STREQUAL "periph_test")
         # Standalone peripheral test — no BSW app framework, driverlib only.
         set(_app_sources src/main_periph_test.c)
+    elseif(APP_MODEL STREQUAL "fullperiph_test")
+        # All-peripheral SIL test — raw MMIO, no driverlib or BSW framework.
+        set(_app_sources src/main_fullperiph_test.c)
     else()
         set(_app_sources src/main_baremetal.c)
     endif()
-    if(NOT APP_MODEL STREQUAL "periph_test")
+    set(_is_periph_test OFF)
+    if(APP_MODEL STREQUAL "periph_test" OR APP_MODEL STREQUAL "fullperiph_test")
+        set(_is_periph_test ON)
+    endif()
+    if(NOT _is_periph_test)
         # Shared application sources (baremetal + oslite only)
         list(APPEND _app_sources
             src/app_tasks.c
@@ -69,7 +76,7 @@ if(NOT BUILD_TESTS)
             src/led_blink.c
         )
     endif()
-    if(NOT PLATFORM STREQUAL "posix" AND NOT APP_MODEL STREQUAL "periph_test")
+    if(NOT PLATFORM STREQUAL "posix" AND NOT _is_periph_test)
         list(APPEND _app_sources src/app_stubs.c)
     endif()
     # Board layer (mspm0 + renode SIL both target the MSPM0G3507 silicon
@@ -84,7 +91,7 @@ if(NOT BUILD_TESTS)
     if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
         list(APPEND _app_sources
             "${_msp_dir}/sdk/ti/devices/msp/m0p/startup_system_files/gcc/startup_mspm0g350x_gcc.c")
-        if(NOT APP_MODEL STREQUAL "periph_test")
+        if(NOT _is_periph_test)
             # Board SYSCFG_DL_init overrides — not needed for periph_test which
             # initialises peripherals directly via driverlib (no BSW framework).
             set(_board_dir "${CMAKE_SOURCE_DIR}/boards/${BOARD}")
@@ -149,7 +156,7 @@ if(NOT BUILD_TESTS)
     # applications go through the MCAL contract headers (Mcu.h/Dio.h/Os.h/...)
     # provided directly by mcal_<platform>.
     # periph_test uses TI driverlib directly; no BSW or MCAL layer is linked.
-    if(APP_MODEL STREQUAL "periph_test")
+    if(_is_periph_test)
         # driverlib-only; ti_driverlib already linked above via the mspm0/renode block
     elseif(PLATFORM STREQUAL "mspm0")
         # mspm0: mcal_msp (from bsw-mcal-msp submodule) ships the full AUTOSAR
