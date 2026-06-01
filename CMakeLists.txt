@@ -55,16 +55,21 @@ if(NOT BUILD_TESTS)
         # Os_Lite.c is not part of mcal_msp; compile it here
         list(APPEND _app_sources
             "${CMAKE_SOURCE_DIR}/bsw/platform/${BSW_PLATFORM}/src/Os_Lite.c")
+    elseif(APP_MODEL STREQUAL "periph_test")
+        # Standalone peripheral test — no BSW app framework, driverlib only.
+        set(_app_sources src/main_periph_test.c)
     else()
         set(_app_sources src/main_baremetal.c)
     endif()
-    # Shared application sources (both models)
-    list(APPEND _app_sources
-        src/app_tasks.c
-        src/app_mode.c
-        src/led_blink.c
-    )
-    if(NOT PLATFORM STREQUAL "posix")
+    if(NOT APP_MODEL STREQUAL "periph_test")
+        # Shared application sources (baremetal + oslite only)
+        list(APPEND _app_sources
+            src/app_tasks.c
+            src/app_mode.c
+            src/led_blink.c
+        )
+    endif()
+    if(NOT PLATFORM STREQUAL "posix" AND NOT APP_MODEL STREQUAL "periph_test")
         list(APPEND _app_sources src/app_stubs.c)
     endif()
     # Board layer (mspm0 + renode SIL both target the MSPM0G3507 silicon
@@ -77,16 +82,21 @@ if(NOT BUILD_TESTS)
     # links mcal_renode instead of mcal_msp/driverlib for HW access.
     set(_msp_dir "${CMAKE_SOURCE_DIR}/bsw/platform/bsw-mcal-msp")
     if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
-        set(_board_dir "${CMAKE_SOURCE_DIR}/boards/${BOARD}")
-        if(NOT EXISTS "${_board_dir}/syscfg_lp.c")
-            message(FATAL_ERROR
-                "Board file missing: ${_board_dir}/syscfg_lp.c\n"
-                "Each mspm0g* BOARD must ship its own SYSCFG_DL_init overrides.")
-        endif()
         list(APPEND _app_sources
-            "${_msp_dir}/sdk/ti/devices/msp/m0p/startup_system_files/gcc/startup_mspm0g350x_gcc.c"
-            "${_msp_dir}/system/ti_msp_dl_config.c"
-            "${_board_dir}/syscfg_lp.c")
+            "${_msp_dir}/sdk/ti/devices/msp/m0p/startup_system_files/gcc/startup_mspm0g350x_gcc.c")
+        if(NOT APP_MODEL STREQUAL "periph_test")
+            # Board SYSCFG_DL_init overrides — not needed for periph_test which
+            # initialises peripherals directly via driverlib (no BSW framework).
+            set(_board_dir "${CMAKE_SOURCE_DIR}/boards/${BOARD}")
+            if(NOT EXISTS "${_board_dir}/syscfg_lp.c")
+                message(FATAL_ERROR
+                    "Board file missing: ${_board_dir}/syscfg_lp.c\n"
+                    "Each mspm0g* BOARD must ship its own SYSCFG_DL_init overrides.")
+            endif()
+            list(APPEND _app_sources
+                "${_msp_dir}/system/ti_msp_dl_config.c"
+                "${_board_dir}/syscfg_lp.c")
+        endif()
         # TI MSPM0 driverlib — bsw-mcal-msp ships the headers and .c files
         # but does not compile them. Build a static library here so the
         # firmware can resolve DL_Common_delayCycles, DL_Timer_*, DL_GPIO_*
@@ -138,7 +148,10 @@ if(NOT BUILD_TESTS)
     # the chosen PLATFORM. mcal_hal is BSW-internal legacy (HAL-wrapping); new
     # applications go through the MCAL contract headers (Mcu.h/Dio.h/Os.h/...)
     # provided directly by mcal_<platform>.
-    if(PLATFORM STREQUAL "mspm0")
+    # periph_test uses TI driverlib directly; no BSW or MCAL layer is linked.
+    if(APP_MODEL STREQUAL "periph_test")
+        # driverlib-only; ti_driverlib already linked above via the mspm0/renode block
+    elseif(PLATFORM STREQUAL "mspm0")
         # mspm0: mcal_msp (from bsw-mcal-msp submodule) ships the full AUTOSAR
         # contract (Dio_Hw.c, …) AND the low-level hal_*.c for this platform.
         # mcal_mspm0 (in BSW framework) provides only mcal/mspm0/*_Hw.c overrides.
