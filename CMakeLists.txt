@@ -13,6 +13,7 @@ set(BOARD        "lp_mspm0g3507" CACHE STRING "Target board (boards/*.yaml)")
 set(BSW_PLATFORM "bsw-mcal-msp"  CACHE STRING "BSW platform submodule")
 set(PYOCD_TARGET "MSPM0G3507"    CACHE STRING "pyOCD target name")
 set(PLATFORM     "mspm0"         CACHE STRING "Build platform — passed to BSW: posix | mspm0 | renode | traveo")
+set(APP_MODEL    "baremetal"     CACHE STRING "App entry model: baremetal | oslite")
 option(BUILD_TESTS "Build unit tests (host build only)" OFF)
 
 if(BUILD_TESTS)
@@ -48,10 +49,18 @@ add_compile_definitions(BOARD_${BOARD_UPPER})
 # Firmware application
 ######################################
 if(NOT BUILD_TESTS)
-    set(_app_sources
-        src/main.c
-        src/led_blink.c
-    )
+    if(APP_MODEL STREQUAL "oslite")
+        set(_app_sources src/main_oslite.c)
+        add_compile_definitions(OS_USE_LITE)
+        # Os_Lite.c is not part of mcal_msp; compile it here
+        list(APPEND _app_sources
+            "${CMAKE_SOURCE_DIR}/bsw/platform/${BSW_PLATFORM}/src/Os_Lite.c")
+    else()
+        set(_app_sources
+            src/main_baremetal.c
+            src/led_blink.c
+        )
+    endif()
     if(NOT PLATFORM STREQUAL "posix")
         list(APPEND _app_sources src/app_stubs.c)
     endif()
@@ -96,6 +105,10 @@ if(NOT BUILD_TESTS)
         target_compile_definitions(mcal_msp PUBLIC LP_MSPM0G3507 MCU_HW_SYSTICK_WEAK)
     endif()
     add_executable(${PROJECT_NAME} ${_app_sources})
+    if(APP_MODEL STREQUAL "oslite")
+        target_include_directories(${PROJECT_NAME} PRIVATE
+            "${CMAKE_SOURCE_DIR}/bsw/platform/${BSW_PLATFORM}/include")
+    endif()
     if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
         # Include paths for syscfg_lp.c + ti_msp_dl_config.c + startup file
         # to find ti_msp_dl_config.h and the SDK headers.

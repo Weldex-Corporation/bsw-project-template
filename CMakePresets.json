@@ -3,7 +3,7 @@
   "configurePresets": [
     {
       "name": "bsw-mcal-msp",
-      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507)",
+      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507, bare-metal)",
       "generator": "Ninja",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
       "binaryDir": "${sourceDir}/build/bsw-mcal-msp",
@@ -11,6 +11,23 @@
         "PLATFORM":          "mspm0",
         "BOARD":             "lp_mspm0g3507",
         "BSW_PLATFORM":      "bsw-mcal-msp",
+        "APP_MODEL":         "baremetal",
+        "PYOCD_TARGET":      "MSPM0G3507",
+        "BUILD_TESTS":       "OFF",
+        "CMAKE_BUILD_TYPE":  "Release"
+      }
+    },
+    {
+      "name": "bsw-mcal-msp-oslite",
+      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507, Os_Lite)",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/bsw-mcal-msp-oslite",
+      "cacheVariables": {
+        "PLATFORM":          "mspm0",
+        "BOARD":             "lp_mspm0g3507",
+        "BSW_PLATFORM":      "bsw-mcal-msp",
+        "APP_MODEL":         "oslite",
         "PYOCD_TARGET":      "MSPM0G3507",
         "BUILD_TESTS":       "OFF",
         "CMAKE_BUILD_TYPE":  "Release"
@@ -30,7 +47,7 @@
     },
     {
       "name": "renode-sil",
-      "displayName": "SIL — Renode ARM Emulator",
+      "displayName": "SIL — Renode ARM Emulator (bare-metal)",
       "generator": "Ninja",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
       "binaryDir": "${sourceDir}/build/renode-sil",
@@ -38,15 +55,33 @@
         "PLATFORM":         "renode",
         "BOARD":            "lp_mspm0g3507",
         "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "baremetal",
+        "BUILD_TESTS":      "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "renode-sil-oslite",
+      "displayName": "SIL — Renode ARM Emulator (Os_Lite)",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/renode-sil-oslite",
+      "cacheVariables": {
+        "PLATFORM":         "renode",
+        "BOARD":            "lp_mspm0g3507",
+        "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "oslite",
         "BUILD_TESTS":      "OFF",
         "CMAKE_BUILD_TYPE": "Debug"
       }
     }
   ],
   "buildPresets": [
-    { "name": "bsw-mcal-msp",  "configurePreset": "bsw-mcal-msp" },
-    { "name": "host-test",     "configurePreset": "host-test" },
-    { "name": "renode-sil",    "configurePreset": "renode-sil" }
+    { "name": "bsw-mcal-msp",        "configurePreset": "bsw-mcal-msp" },
+    { "name": "bsw-mcal-msp-oslite", "configurePreset": "bsw-mcal-msp-oslite" },
+    { "name": "host-test",           "configurePreset": "host-test" },
+    { "name": "renode-sil",          "configurePreset": "renode-sil" },
+    { "name": "renode-sil-oslite",   "configurePreset": "renode-sil-oslite" }
   ],
   "testPresets": [
     {
