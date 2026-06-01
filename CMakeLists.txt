@@ -21,15 +21,14 @@ if(BUILD_TESTS)
 endif()
 
 ######################################
-# BSW submodule (firmware build only)
+# BSW + platform MCAL (firmware build only)
 ######################################
 if(NOT PLATFORM STREQUAL "posix")
     set(BSW_DIR "${CMAKE_SOURCE_DIR}/bsw")
     if(NOT EXISTS "${BSW_DIR}/CMakeLists.txt")
         message(FATAL_ERROR
             "BSW submodule not initialized.\n"
-            "Run: _shared/bootstrap.sh --platform ${BSW_PLATFORM}  (Linux/macOS)\n"
-            "  or _shared\\bootstrap.ps1 -Platform ${BSW_PLATFORM}  (Windows)")
+            "Run: git submodule update --init bsw")
     endif()
     # The template builds only its own LED-blink executable; BSW examples /
     # tests / tutorials are unrelated to this build.
@@ -37,6 +36,19 @@ if(NOT PLATFORM STREQUAL "posix")
     set(BUILD_TESTS     OFF CACHE BOOL "" FORCE)
     set(BUILD_TUTORIALS OFF CACHE BOOL "" FORCE)
     add_subdirectory(${BSW_DIR})
+
+    # Platform MCAL — sibling submodule (bsw-mcal-<platform>)
+    # Each product repo adds the relevant platform submodule alongside bsw/.
+    # BSW_DIR is passed so bsw-mcal-msp can find contract headers.
+    set(_mcal_dir "${CMAKE_SOURCE_DIR}/bsw-mcal-msp")
+    if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
+        if(NOT EXISTS "${_mcal_dir}/CMakeLists.txt")
+            message(FATAL_ERROR
+                "bsw-mcal-msp submodule not initialized.\n"
+                "Run: git submodule update --init bsw-mcal-msp")
+        endif()
+        add_subdirectory(${_mcal_dir} bsw_mcal_msp)
+    endif()
 endif()
 
 ######################################
@@ -54,7 +66,7 @@ if(NOT BUILD_TESTS)
         add_compile_definitions(OS_USE_LITE)
         # Os_Lite.c is not part of mcal_msp; compile it here
         list(APPEND _app_sources
-            "${CMAKE_SOURCE_DIR}/bsw/platform/${BSW_PLATFORM}/src/Os_Lite.c")
+            "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/src/Os_Lite.c")
     elseif(APP_MODEL STREQUAL "periph_test")
         # Standalone peripheral test — no BSW app framework, driverlib only.
         set(_app_sources src/main_periph_test.c)
@@ -96,7 +108,7 @@ if(NOT BUILD_TESTS)
     #     0x20200000) — shared with the LP launchpad rgb_led_pwm demo.
     # Renode SIL uses the same startup and linker script as mspm0, but
     # links mcal_renode instead of mcal_msp/driverlib for HW access.
-    set(_msp_dir "${CMAKE_SOURCE_DIR}/bsw/platform/bsw-mcal-msp")
+    set(_msp_dir "${CMAKE_SOURCE_DIR}/bsw-mcal-msp")
     if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
         list(APPEND _app_sources
             "${_msp_dir}/sdk/ti/devices/msp/m0p/startup_system_files/gcc/startup_mspm0g350x_gcc.c")
@@ -137,7 +149,7 @@ if(NOT BUILD_TESTS)
     add_executable(${PROJECT_NAME} ${_app_sources})
     if(APP_MODEL STREQUAL "oslite")
         target_include_directories(${PROJECT_NAME} PRIVATE
-            "${CMAKE_SOURCE_DIR}/bsw/platform/${BSW_PLATFORM}/include")
+            "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/include")
     endif()
     if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
         # Include paths for syscfg_lp.c + ti_msp_dl_config.c + startup file

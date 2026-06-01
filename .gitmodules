@@ -2,3 +2,6 @@
 	path = bsw
 	url = https://github.com/Weldex-Corporation/bsw.git
 	branch = main
+[submodule "bsw-mcal-msp"]
+	path = bsw-mcal-msp
+	url = https://github.com/Weldex-Corporation/bsw-mcal-msp.git
