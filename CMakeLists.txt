@@ -102,10 +102,11 @@ if(NOT BUILD_TESTS)
             PLATFORM_MSPM0 __MSPM0G3507__ __ARM_ARCH_6M__ __FPU_PRESENT=0)
     endif()
     if(PLATFORM STREQUAL "mspm0")
-        # mcal_msp's Mcu_Hw.c owns SysTick_Handler. syscfg_lp.c may
-        # provide a strong override; mark Mcu_Hw's version weak to avoid
-        # multiple-definition under static-archive linking.
-        target_compile_definitions(mcal_msp PUBLIC LP_MSPM0G3507 MCU_HW_SYSTICK_WEAK)
+        # LP_MSPM0G3507: board-specific GPIO and clock config.
+        # MCU_HW_SYSTICK_WEAK intentionally omitted: syscfg_lp.c does NOT
+        # define SysTick_Handler, so Mcu_Hw.c must provide a strong definition
+        # to override the startup file's weak Default_Handler alias.
+        target_compile_definitions(mcal_msp PUBLIC LP_MSPM0G3507)
     endif()
     add_executable(${PROJECT_NAME} ${_app_sources})
     if(APP_MODEL STREQUAL "oslite")

@@ -74,6 +74,22 @@
         "BUILD_TESTS":      "OFF",
         "CMAKE_BUILD_TYPE": "Debug"
       }
+    },
+    {
+      "name": "renode-driverlib",
+      "displayName": "SIL — Renode + TI driverlib (bare-metal, real register addresses)",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/renode-driverlib",
+      "cacheVariables": {
+        "PLATFORM":         "mspm0",
+        "BOARD":            "lp_mspm0g3507",
+        "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "baremetal",
+        "PYOCD_TARGET":     "MSPM0G3507",
+        "BUILD_TESTS":      "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     }
   ],
   "buildPresets": [
@@ -81,7 +97,8 @@
     { "name": "bsw-mcal-msp-oslite", "configurePreset": "bsw-mcal-msp-oslite" },
     { "name": "host-test",           "configurePreset": "host-test" },
     { "name": "renode-sil",          "configurePreset": "renode-sil" },
-    { "name": "renode-sil-oslite",   "configurePreset": "renode-sil-oslite" }
+    { "name": "renode-sil-oslite",   "configurePreset": "renode-sil-oslite" },
+    { "name": "renode-driverlib",    "configurePreset": "renode-driverlib" }
   ],
   "testPresets": [
     {
