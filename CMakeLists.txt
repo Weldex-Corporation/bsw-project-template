@@ -56,11 +56,13 @@ if(NOT BUILD_TESTS)
         list(APPEND _app_sources
             "${CMAKE_SOURCE_DIR}/bsw/platform/${BSW_PLATFORM}/src/Os_Lite.c")
     else()
-        set(_app_sources
-            src/main_baremetal.c
-            src/led_blink.c
-        )
+        set(_app_sources src/main_baremetal.c)
     endif()
+    # Shared application sources (both models)
+    list(APPEND _app_sources
+        src/app_tasks.c
+        src/led_blink.c
+    )
     if(NOT PLATFORM STREQUAL "posix")
         list(APPEND _app_sources src/app_stubs.c)
     endif()
