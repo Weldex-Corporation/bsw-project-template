@@ -1,6 +1,6 @@
 // LP-MSPM0G3507 — Renode Platform Description
 // Cortex-M0+ @ 32 MHz, 128KB Flash, 32KB SRAM
-// GPIO PA0 = LED_GREEN (monitored by SIL test)
+// GPIO PA0 = LED_GREEN (monitored by the SIL test below at 0x400A0080).
 
 cpu: CPU.CortexM @ sysbus
     cpuType: "cortex-m0+"
@@ -17,20 +17,9 @@ flash: Memory.MappedMemory @ sysbus 0x00000000
 sram: Memory.MappedMemory @ sysbus 0x20000000
     size: 0x00008000
 
-// GPIOA — PA0 is LED_GREEN
-// MSPM0G3507 GPIOA base: 0x400A0000
-// DOUT31_0 (output data) offset: 0x080
-// We use a generic GPIO model and map PA0 bit
-gpioA: GPIOPort.MiV_CoreGPIO @ sysbus 0x400A0000
-    IRQ -> nvic@4
-
-// UART0 for semihosting / printf redirect
-// MSPM0G3507 UART0 base: 0x40108000
-uart0: UART.LiteX_UART @ sysbus 0x40108000
-    IRQ -> nvic@13
-
-// Tag remaining peripheral space (not modeled — returns 0)
-sysbus:
-    init:
-        Tag <0x40000000, 0x4009FFFF> "MSPM0G_PERIPH_A"
-        Tag <0x400A0400, 0x401FFFFF> "MSPM0G_PERIPH_B"
+// GPIOA — modelled as plain MappedMemory so the SIL test can read PA0
+// directly from the DOUT register at 0x400A0080 that hal_gpio_write
+// (bsw/legacy/framework/hal/renode/hal_stubs.c) writes to.
+// MSPM0G3507 GPIOA base: 0x400A0000, size 0x400.
+gpioA: Memory.MappedMemory @ sysbus 0x400A0000
+    size: 0x00000400
