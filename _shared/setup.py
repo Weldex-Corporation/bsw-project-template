@@ -30,6 +30,9 @@ _WORKSPACE_SHARED = Path("/srv/workspaces/_shared/tools/compilers")
 _LOCAL_SHARED     = PROJECT_ROOT / "_shared" / "tools" / "compilers"
 TOOLS_DIR = _WORKSPACE_SHARED if _WORKSPACE_SHARED.exists() else _LOCAL_SHARED
 
+# True when running on the ELM Studio server (shared workspace mount present).
+IS_ELM_SERVER = Path("/srv/workspaces/_shared").is_dir()
+
 PLATFORMS_JSON = SCRIPT_DIR / "platforms.json"
 BSW_REPO_URL   = "https://github.com/Weldex-Corporation/bsw.git"
 BSW_PATH       = PROJECT_ROOT / "bsw"
@@ -146,7 +149,8 @@ def init_platform(cfg):
 # ── Step 3: ARM GCC (firmware cross-compiler) ─────────────────────────────
 
 def install_arm_gcc():
-    gcc_bin = TOOLS_DIR / "gnu-arm" / ARM_GCC_VERSION / "bin" / (
+    dest_dir = TOOLS_DIR / "gnu-arm" / ARM_GCC_VERSION
+    gcc_bin = dest_dir / "bin" / (
         "arm-none-eabi-gcc.exe" if OS == "Windows" else "arm-none-eabi-gcc"
     )
     if gcc_bin.exists() or shutil.which("arm-none-eabi-gcc"):
@@ -156,13 +160,36 @@ def install_arm_gcc():
     if not url:
         warn(f"No ARM GCC URL for OS '{OS}'. Install manually.")
         return
-    dest_dir = TOOLS_DIR / "gnu-arm" / ARM_GCC_VERSION
-    dest_dir.mkdir(parents=True, exist_ok=True)
+    # Extract into a temp dir, then move the single inner toolchain folder's
+    # contents up to dest_dir. The Arm archives contain a top-level folder
+    # like 'arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-eabi/' which would
+    # otherwise nest below dest_dir and break the dest_dir/bin/ layout that
+    # cmake/arm-none-eabi.cmake expects.
+    dest_dir.parent.mkdir(parents=True, exist_ok=True)
+    staging = TOOLS_DIR / f".gnu-arm-{ARM_GCC_VERSION}-staging"
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir(parents=True)
     archive = TOOLS_DIR / url.split("/")[-1]
     download(url, archive)
-    extract(archive, dest_dir)
+    extract(archive, staging)
     archive.unlink(missing_ok=True)
-    ok("ARM GCC installed")
+    inner = [p for p in staging.iterdir() if p.is_dir()]
+    if len(inner) == 1:
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir)
+        shutil.move(str(inner[0]), str(dest_dir))
+        shutil.rmtree(staging, ignore_errors=True)
+    else:
+        # Archive layout differs from expected (no single top-level dir).
+        # Fall back to using staging contents directly.
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir)
+        shutil.move(str(staging), str(dest_dir))
+    if not gcc_bin.exists():
+        err(f"ARM GCC install failed: {gcc_bin} not found after extraction")
+        return
+    ok(f"ARM GCC installed at {dest_dir}")
 
 # ── Step 4: MinGW-w64 (Windows only — host compiler for unit tests) ───────
 
@@ -300,6 +327,11 @@ def main():
     parser.add_argument("--skip-bsw",        action="store_true",
                         help="Skip BSW submodule init (tool-only install)")
     args = parser.parse_args()
+
+    if IS_ELM_SERVER:
+        log("Environment: ELM server (shared toolchain under /srv/workspaces/_shared)")
+    else:
+        log(f"Environment: local {OS}")
 
     platforms = load_platforms()
     chosen    = select_platform(platforms, args.platform)

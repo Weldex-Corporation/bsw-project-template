@@ -8,3 +8,10 @@ _shared/tools/sdk/
 .vscode/
 .cache/
 CMakeUserPresets.json
+
+# Renode / Robot Framework test run artifacts (generated under repo root)
+robot_output.xml
+log.html
+report.html
+logs/
+snapshots/
