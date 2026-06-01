@@ -1,0 +1,22 @@
+# LP-MSPM0G3507 — Renode Machine Script
+# Paths are relative to this file's directory (boards/lp_mspm0g3507/).
+
+mach create "lp_mspm0g3507"
+machine LoadPlatformDescription @boards/lp_mspm0g3507/lp_mspm0g3507.repl
+
+# WWDT0/1 — absorbs service/feed writes, never resets in SIL
+machine PyDevFromFile @boards/lp_mspm0g3507/models/mspm0_wwdt.py 0x40080000 0x1200 True "wwdt0"
+machine PyDevFromFile @boards/lp_mspm0g3507/models/mspm0_wwdt.py 0x40082000 0x1200 True "wwdt1"
+
+# TIMG8 — pre-defined GPT, IRQ 2, 1 MHz tick (CPS=32)
+machine PyDevFromFile @boards/lp_mspm0g3507/models/mspm0_timg8.py 0x40090000 0x2000 True "timg8"
+
+# TIMG7 — main GPT / scheduler tick, IRQ 20, 1 MHz tick (CPS=32)
+machine PyDevFromFile @boards/lp_mspm0g3507/models/mspm0_timg7.py 0x4086A000 0x2000 True "timg7"
+
+# DMA — on DMAEN copies bytes via sysbus then fires UART TX IRQ
+machine PyDevFromFile @boards/lp_mspm0g3507/models/mspm0_dma.py 0x4042A000 0x1400 True "dma"
+
+# UART1 / UART0 — TX capture + EOT_DONE IIDX
+machine PyDevFromFile @boards/lp_mspm0g3507/models/mspm0_uart.py 0x40100000 0x2000 True "uart1"
+machine PyDevFromFile @boards/lp_mspm0g3507/models/mspm0_uart.py 0x40108000 0x2000 True "uart0"

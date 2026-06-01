@@ -48,10 +48,15 @@ ARM_GCC_URLS = {
 }
 
 # ── MinGW-w64 (Windows host compiler for unit tests) ─────────────────────
-# Standalone build from WinLibs (no MSYS2 required)
-MINGW_VERSION  = "13.3.0"
-MINGW_MSYS2_PATH = Path("C:/msys64")
-MINGW_UCRT_BIN   = MINGW_MSYS2_PATH / "ucrt64/bin"
+# WinLibs standalone zip — no MSYS2 daemon, fully synchronous install.
+# https://github.com/brechtsanders/winlibs_mingw
+MINGW_VERSION = "13.3.0"
+WINLIBS_URL   = (
+    "https://github.com/brechtsanders/winlibs_mingw/releases/download/"
+    "13.3.0posix-11.0.3-ucrt-r1/"
+    "winlibs-x86_64-posix-seh-gcc-13.3.0-mingw-w64ucrt-11.0.3-r1.zip"
+)
+MINGW_DIR = TOOLS_DIR / "mingw" / MINGW_VERSION  # bin/ lives directly inside
 
 # ── Renode ────────────────────────────────────────────────────────────────
 RENODE_VERSION = "1.15.2"
@@ -196,27 +201,58 @@ def install_arm_gcc():
 def install_mingw_windows():
     if OS != "Windows":
         return
-    if MINGW_UCRT_BIN.exists() and (MINGW_UCRT_BIN / "gcc.exe").exists():
-        ok(f"MinGW-w64 already at {MINGW_UCRT_BIN}")
+    gcc = MINGW_DIR / "bin" / "gcc.exe"
+    if gcc.exists():
+        ok(f"MinGW-w64 already at {MINGW_DIR}")
         return
-    log("MinGW-w64 not found — installing MSYS2 + MinGW-w64 via winget...")
-    try:
-        run(["winget", "install", "MSYS2.MSYS2",
-             "--silent", "--accept-source-agreements",
-             "--accept-package-agreements"], check=False)
-        # Give MSYS2 a moment then install ucrt64 GCC
-        msys2_bash = MINGW_MSYS2_PATH / "usr/bin/bash.exe"
-        if msys2_bash.exists():
-            run([str(msys2_bash), "-lc",
-                 "pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc "
-                 "mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja"])
-            ok(f"MinGW-w64 installed at {MINGW_UCRT_BIN}")
-        else:
-            warn("MSYS2 installed but bash not found yet. Restart terminal and re-run.")
-    except Exception as e:
-        warn(f"MinGW-w64 install failed: {e}")
-        print("  Manual install: https://www.msys2.org → then:")
-        print("  pacman -S mingw-w64-ucrt-x86_64-gcc")
+    if shutil.which("gcc"):
+        ok("MinGW-w64 gcc already in PATH")
+        return
+    log("Downloading WinLibs MinGW-w64 (standalone zip, no MSYS2)...")
+    MINGW_DIR.parent.mkdir(parents=True, exist_ok=True)
+    staging = TOOLS_DIR / "mingw" / ".staging"
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir(parents=True)
+    archive = TOOLS_DIR / "winlibs-mingw.zip"
+    download(WINLIBS_URL, archive)
+    extract(archive, staging)
+    archive.unlink(missing_ok=True)
+    inner = [p for p in staging.iterdir() if p.is_dir()]
+    if len(inner) == 1:
+        if MINGW_DIR.exists():
+            shutil.rmtree(MINGW_DIR)
+        shutil.move(str(inner[0]), str(MINGW_DIR))
+        shutil.rmtree(staging, ignore_errors=True)
+    else:
+        if MINGW_DIR.exists():
+            shutil.rmtree(MINGW_DIR)
+        shutil.move(str(staging), str(MINGW_DIR))
+    if not gcc.exists():
+        err(f"MinGW install failed: {gcc} not found after extraction")
+        return
+    ok(f"MinGW-w64 installed at {MINGW_DIR}")
+
+# ── Step 4b: Persist Windows User PATH ───────────────────────────────────
+
+def persist_path_windows(dirs):
+    """Append dirs to Windows User PATH (survives terminal restarts)."""
+    if OS != "Windows":
+        return
+    entries = [str(d) for d in dirs if Path(d).exists()]
+    if not entries:
+        return
+    checks = "".join(
+        f'if ($cur -notlike "*{e}*") {{ $cur = "{e};$cur" }}'
+        for e in entries
+    )
+    ps = (
+        '$cur = [Environment]::GetEnvironmentVariable("PATH", "User");'
+        + checks
+        + '; [Environment]::SetEnvironmentVariable("PATH", $cur, "User")'
+    )
+    run(["powershell", "-NoProfile", "-Command", ps], check=False)
+    ok("User PATH updated — restart terminal to apply")
 
 # ── Step 5: Renode (SIL emulator) ─────────────────────────────────────────
 
@@ -269,15 +305,16 @@ def install_python_pkgs(cfg):
 
 def verify():
     print("\n[setup] ── Verification ──────────────────────────────────")
-    # Extend PATH with known tool locations
+    # Extend PATH with known tool locations (process-local + persistent on Windows)
     extra = []
     arm_bin = TOOLS_DIR / "gnu-arm" / ARM_GCC_VERSION / "bin"
     if arm_bin.exists():
         extra.append(str(arm_bin))
-    if OS == "Windows" and MINGW_UCRT_BIN.exists():
-        extra.append(str(MINGW_UCRT_BIN))
+    if OS == "Windows" and (MINGW_DIR / "bin").exists():
+        extra.append(str(MINGW_DIR / "bin"))
     if extra:
         os.environ["PATH"] = os.pathsep.join(extra) + os.pathsep + os.environ.get("PATH","")
+    persist_path_windows([Path(e) for e in extra])
 
     checks = [
         ["arm-none-eabi-gcc", "--version"],

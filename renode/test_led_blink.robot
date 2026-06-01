@@ -9,8 +9,8 @@ Test Teardown     Test Teardown
 Resource          ${RENODEKEYWORDS}
 
 *** Variables ***
-${PLATFORM}     ${CURDIR}/lp_mspm0g3507.repl
 ${ELF}          ${CURDIR}/../build/renode-sil/bsw_project_template.elf
+${BOARD_DIR}    ${CURDIR}/../boards/lp_mspm0g3507
 ${DOUT_ADDR}    0x400A0080
 ${LED_PIN}      0
 
@@ -42,12 +42,18 @@ LED Should Complete Full 1 Hz Cycle
 *** Keywords ***
 Prepare Machine
     [Documentation]    Fresh machine + ELF for every test, so each case starts
-    ...                from a known reset state. emulation RunFor drives the
-    ...                clock; we do NOT call `start` because RunFor and start
-    ...                are mutually exclusive in Renode.
+    ...                from a known reset state. All paths are absolute so they
+    ...                resolve correctly regardless of Renode's working directory.
     Reset Emulation
     Execute Command    mach create "lp_mspm0g3507"
-    Execute Command    machine LoadPlatformDescription @${PLATFORM}
+    Execute Command    machine LoadPlatformDescription @${BOARD_DIR}/lp_mspm0g3507.repl
+    Execute Command    machine PyDevFromFile @${BOARD_DIR}/models/mspm0_wwdt.py 0x40080000 0x1200 True "wwdt0"
+    Execute Command    machine PyDevFromFile @${BOARD_DIR}/models/mspm0_wwdt.py 0x40082000 0x1200 True "wwdt1"
+    Execute Command    machine PyDevFromFile @${BOARD_DIR}/models/mspm0_timg8.py 0x40090000 0x2000 True "timg8"
+    Execute Command    machine PyDevFromFile @${BOARD_DIR}/models/mspm0_timg7.py 0x4086A000 0x2000 True "timg7"
+    Execute Command    machine PyDevFromFile @${BOARD_DIR}/models/mspm0_dma.py 0x4042A000 0x1400 True "dma"
+    Execute Command    machine PyDevFromFile @${BOARD_DIR}/models/mspm0_uart.py 0x40100000 0x2000 True "uart1"
+    Execute Command    machine PyDevFromFile @${BOARD_DIR}/models/mspm0_uart.py 0x40108000 0x2000 True "uart0"
     Execute Command    sysbus LoadELF @${ELF}
 
 Read LED Level

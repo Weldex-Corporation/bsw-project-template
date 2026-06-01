@@ -1,6 +1,10 @@
 // LP-MSPM0G3507 — Renode Platform Description
 // Cortex-M0+ @ 32 MHz, 128KB Flash, 32KB SRAM
 // GPIO PA0 = LED_GREEN (monitored by the SIL test below at 0x400A0080).
+//
+// Python peripherals (UART, DMA, TIMG, WWDT) are loaded separately via
+// PyDevFromFile in lp_mspm0g3507.resc — Python.PythonPeripheral with
+// filename: breaks the platform parser in Renode 1.16.x.
 
 cpu: CPU.CortexM @ sysbus
     cpuType: "cortex-m0+"
@@ -14,24 +18,16 @@ nvic: IRQControllers.NVIC @ sysbus 0xE000E000
 flash: Memory.MappedMemory @ sysbus 0x00000000
     size: 0x00020000
 
-// SRAM origin matches the SDK linker script mspm0g3507.ld (0x20200000),
-// NOT 0x20000000 — that was the previous placeholder before the board
-// layer was hooked up.
+// SRAM origin matches the SDK linker script mspm0g3507.ld (0x20200000).
 sram: Memory.MappedMemory @ sysbus 0x20200000
     size: 0x00008000
 
-// GPIOA — modelled as plain MappedMemory so the SIL test can read PA0
-// directly from the DOUT register at 0x400A0080 that hal_gpio_write
-// (bsw/legacy/framework/hal/renode/hal_stubs.c) writes to.
-// MSPM0G3507 GPIOA base: 0x400A0000, size 0x400.
+// GPIOA — plain MappedMemory; SIL test reads PA0 DOUT at 0x400A0080.
 gpioA: Memory.MappedMemory @ sysbus 0x400A0000
     size: 0x00000400
 
-// VTIME_MS — single 4-byte register at 0x4000A020 that returns the
-// elapsed simulated wall-clock time in milliseconds. mcal_renode
-// Mcu_GetTickMs() reads this, so `emulation RunFor 500 ms` in the
-// .robot test makes the firmware's notion of time match sim time.
-// One-liner script keeps the .repl self-contained.
+// VTIME_MS — 4-byte register returning sim time in ms (inline script OK).
+// Mcu_GetTickMs() reads 0x4000A020; emulation RunFor drives the value.
 tim0_vtime_ms: Python.PythonPeripheral @ sysbus 0x4000A020
     size: 0x4
     initable: true

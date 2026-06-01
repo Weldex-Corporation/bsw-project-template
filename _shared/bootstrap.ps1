@@ -52,3 +52,10 @@ if ($Platform) { $args_list += "--platform"; $args_list += $Platform }
 
 Write-Host "[bootstrap] Running setup.py..." -ForegroundColor Cyan
 & $python @args_list
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[bootstrap] setup.py failed (exit $LASTEXITCODE)" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n[bootstrap] Done. Tool paths have been added to your User PATH." -ForegroundColor Green
+Write-Host "            Restart this terminal (or open a new one) for PATH to take effect." -ForegroundColor Yellow
