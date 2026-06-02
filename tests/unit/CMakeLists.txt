@@ -8,32 +8,34 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(unity)
 
-add_executable(test_led_blink
-    test_led_blink.c
-    ${PROJECT_SOURCE_DIR}/src/led_blink.c
+# Common bag of sources: SWC + static RTE backend.
+# Both test execs link them; the static Rte_Impl.c hosts the shared Mode port.
+set(_app_under_test
+    ${PROJECT_SOURCE_DIR}/src/swc/Swc_LedBlink.c
+    ${PROJECT_SOURCE_DIR}/src/swc/Swc_ModeSelector.c
+    ${PROJECT_SOURCE_DIR}/src/rte/static/Rte_Impl.c
 )
 
-target_include_directories(test_led_blink PRIVATE
-    ${PROJECT_SOURCE_DIR}/src
+set(_app_includes
+    ${PROJECT_SOURCE_DIR}/src/swc
+    ${PROJECT_SOURCE_DIR}/src/rte
+    ${PROJECT_SOURCE_DIR}/src/cfg
     ${PROJECT_SOURCE_DIR}/tests/mock
     ${unity_SOURCE_DIR}/src
 )
 
-target_link_libraries(test_led_blink PRIVATE unity)
-
-add_test(NAME "LedBlink::UnitTests" COMMAND test_led_blink)
-
-add_executable(test_app_mode
-    test_app_mode.c
-    ${PROJECT_SOURCE_DIR}/src/app_mode.c
+add_executable(test_Swc_LedBlink
+    test_Swc_LedBlink.c
+    ${_app_under_test}
 )
+target_include_directories(test_Swc_LedBlink PRIVATE ${_app_includes})
+target_link_libraries(test_Swc_LedBlink PRIVATE unity mock_dio_state)
+add_test(NAME "Swc_LedBlink::UnitTests" COMMAND test_Swc_LedBlink)
 
-target_include_directories(test_app_mode PRIVATE
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/tests/mock
-    ${unity_SOURCE_DIR}/src
+add_executable(test_Swc_ModeSelector
+    test_Swc_ModeSelector.c
+    ${_app_under_test}
 )
-
-target_link_libraries(test_app_mode PRIVATE unity mock_dio_state)
-
-add_test(NAME "AppMode::UnitTests" COMMAND test_app_mode)
+target_include_directories(test_Swc_ModeSelector PRIVATE ${_app_includes})
+target_link_libraries(test_Swc_ModeSelector PRIVATE unity mock_dio_state)
+add_test(NAME "Swc_ModeSelector::UnitTests" COMMAND test_Swc_ModeSelector)

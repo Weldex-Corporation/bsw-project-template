@@ -5,6 +5,13 @@
 typedef uint8_t Dio_ChannelType;
 typedef uint8_t Dio_LevelType;
 
+/* Mirror real Dio_ConfigType so the application's Dio_Cfg.{c,h} compiles
+ * unchanged in the host build. The mock Dio_Init ignores the table. */
+typedef struct {
+    const Dio_ChannelType *channels;
+    uint8                  numChannels;
+} Dio_ConfigType;
+
 #define DioConf_DioChannel_LED_GREEN  0u
 #define DioConf_DioChannel_LED_BLUE   1u
 #define DioConf_DioChannel_LED_RED    2u

@@ -13,7 +13,7 @@ set(BOARD        "lp_mspm0g3507" CACHE STRING "Target board (boards/*.yaml)")
 set(BSW_PLATFORM "bsw-mcal-msp"  CACHE STRING "BSW platform submodule")
 set(PYOCD_TARGET "MSPM0G3507"    CACHE STRING "pyOCD target name")
 set(PLATFORM     "mspm0"         CACHE STRING "Build platform — passed to BSW: posix | mspm0 | traveo")
-set(APP_MODEL    "baremetal"     CACHE STRING "App entry model: baremetal | oslite")
+set(APP_MODEL    "baremetal"     CACHE STRING "App entry model: baremetal | oslite | rte_os")
 option(BUILD_TESTS "Build unit tests (host build only)" OFF)
 
 if(BUILD_TESTS)
@@ -73,6 +73,11 @@ if(NOT BUILD_TESTS)
         # Os_Lite.c is not part of mcal_msp; compile it here
         list(APPEND _app_sources
             "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/src/Os_Lite.c")
+    elseif(APP_MODEL STREQUAL "rte_os")
+        # Full AUTOSAR stack — BSW Rte + Os (Task + Alarm). Pulls in the
+        # bsw framework lib for real (not stripped by gc-sections) since the
+        # symbols Os_Init / Rte_Init / EcuM_Init / Os_StartOS are called.
+        set(_app_sources src/main_rte_os.c)
     elseif(APP_MODEL STREQUAL "periph_test")
         # Standalone peripheral test — no BSW app framework, driverlib only.
         set(_app_sources tests/sil/main_periph_test.c)
@@ -96,12 +101,20 @@ if(NOT BUILD_TESTS)
         set(_is_periph_test ON)
     endif()
     if(NOT _is_periph_test)
-        # Shared application sources (baremetal + oslite only)
+        # Application SWCs + per-style RTE backend + hand-written Cfg.
+        # SWCs are bit-identical across baremetal / oslite / rte_os; the
+        # selected RTE backend is the only thing that differs.
         list(APPEND _app_sources
-            src/app_tasks.c
-            src/app_mode.c
-            src/led_blink.c
+            src/swc/Swc_ModeSelector.c
+            src/swc/Swc_LedBlink.c
+            src/cfg/Port_Cfg.c
+            src/cfg/Dio_Cfg.c
         )
+        if(APP_MODEL STREQUAL "rte_os")
+            list(APPEND _app_sources src/rte/bsw/Rte_Impl.c)
+        else()
+            list(APPEND _app_sources src/rte/static/Rte_Impl.c)
+        endif()
     endif()
     # Board layer (mspm0 — both real silicon and Renode SIL targets). Provides:
     #   - Cortex-M0+ startup file (vector table, Reset_Handler) from SDK
@@ -149,6 +162,13 @@ if(NOT BUILD_TESTS)
         target_compile_definitions(mcal_msp PUBLIC LP_MSPM0G3507)
     endif()
     add_executable(${PROJECT_NAME} ${_app_sources})
+    if(NOT _is_periph_test)
+        # App-side include paths (SWC + Rte + Cfg) for baremetal/oslite/rte_os.
+        target_include_directories(${PROJECT_NAME} PRIVATE
+            "${CMAKE_SOURCE_DIR}/src/swc"
+            "${CMAKE_SOURCE_DIR}/src/rte"
+            "${CMAKE_SOURCE_DIR}/src/cfg")
+    endif()
     if(APP_MODEL STREQUAL "oslite")
         target_include_directories(${PROJECT_NAME} PRIVATE
             "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/include")
@@ -165,6 +185,10 @@ if(NOT BUILD_TESTS)
             "${_msp_dir}/sdk/ti/driverlib")
         target_compile_definitions(${PROJECT_NAME} PRIVATE
             PLATFORM_MSPM0 __MSPM0G3507__ __ARM_ARCH_6M__ __FPU_PRESENT=0)
+        # Note: ti_driverlib is re-linked at the END of the libraries
+        # list below so it can resolve DL_Timer_* / DL_GPIO_* / …
+        # references coming out of mcal_msp (Gpt_Hw.c etc.). Order
+        # matters for static archive linkers.
         target_link_libraries(${PROJECT_NAME} PRIVATE ti_driverlib)
         set(_linker_script
             "${_msp_dir}/examples/rgb_led_pwm/mspm0g3507.ld")
@@ -185,7 +209,22 @@ if(NOT BUILD_TESTS)
         # mspm0: mcal_msp (from bsw-mcal-msp submodule) ships the full AUTOSAR
         # contract (Dio_Hw.c, …) AND the low-level hal_*.c for this platform.
         # mcal_mspm0 (in BSW framework) provides only mcal/mspm0/*_Hw.c overrides.
-        target_link_libraries(${PROJECT_NAME} PRIVATE bsw mcal_mspm0 mcal_msp)
+        target_link_libraries(${PROJECT_NAME} PRIVATE bsw mcal_mspm0 mcal_msp
+            ti_driverlib)
+        if(APP_MODEL STREQUAL "rte_os")
+            # Legacy BSW framework files (Rte.c, dispatch.c, debug.c,
+            # mem.c, pool.c, …) still call hal_critical_section_enter
+            # / _exit and hal_system_sw_interrupt_trigger. Pull in the
+            # supporting MSP HAL files. hal_system.c is intentionally
+            # left out because its inline asm fails to assemble on
+            # Cortex-M0+ (see docs/upstream-issues.md #1); the symbols
+            # that legacy code references from it are provided by a
+            # tiny local shim.
+            target_sources(${PROJECT_NAME} PRIVATE
+                "${_msp_dir}/legacy/hal/hal_critical.c"
+                "${_msp_dir}/legacy/hal/hal_mem.c"
+                "${CMAKE_SOURCE_DIR}/src/hal_system_shim.c")
+        endif()
     elseif(PLATFORM STREQUAL "traveo")
         # Traveo target hookup left for the platform owner; mcal_traveo is the
         # BSW-side stub. The Infineon PDL target name to link is project-specific.

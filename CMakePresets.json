@@ -18,6 +18,22 @@
       }
     },
     {
+      "name": "bsw-mcal-msp-rte",
+      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507, AUTOSAR RTE + Os)",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/bsw-mcal-msp-rte",
+      "cacheVariables": {
+        "PLATFORM":          "mspm0",
+        "BOARD":             "lp_mspm0g3507",
+        "BSW_PLATFORM":      "bsw-mcal-msp",
+        "APP_MODEL":         "rte_os",
+        "PYOCD_TARGET":      "MSPM0G3507",
+        "BUILD_TESTS":       "OFF",
+        "CMAKE_BUILD_TYPE":  "Release"
+      }
+    },
+    {
       "name": "bsw-mcal-msp-oslite",
       "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507, Os_Lite)",
       "generator": "Ninja",
@@ -129,6 +145,7 @@
   "buildPresets": [
     { "name": "bsw-mcal-msp",        "configurePreset": "bsw-mcal-msp" },
     { "name": "bsw-mcal-msp-oslite", "configurePreset": "bsw-mcal-msp-oslite" },
+    { "name": "bsw-mcal-msp-rte",    "configurePreset": "bsw-mcal-msp-rte" },
     { "name": "host-test",           "configurePreset": "host-test" },
     { "name": "renode-driverlib",         "configurePreset": "renode-driverlib" },
     { "name": "renode-driverlib-periph",         "configurePreset": "renode-driverlib-periph" },

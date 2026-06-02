@@ -37,13 +37,36 @@ bsw-project-template/
 | `bsw-mcal-msp` | TI MSPM0G series (LP-MSPM0G3507) | arm-none-eabi-gcc |
 | `bsw-mcal-traveo` | Infineon TRAVEO II | arm-none-eabi-gcc |
 
+## Integration Styles
+
+The same Swc_LedBlink + Swc_ModeSelector SWCs (under `src/swc/`) run unchanged
+across three integration styles — pick the one that fits the project:
+
+| Style | APP_MODEL | Scheduler | RTE backend | Footprint |
+|---|---|---|---|---|
+| Bare-metal super-loop | `baremetal` | main loop polling SysTick | static var + direct Dio | smallest |
+| Lightweight cooperative Os | `oslite` | Os_Lite (per-task period) | static var + direct Dio | small |
+| Full AUTOSAR (RTE + Os) | `rte_os` | BSW Os Task + Alarm | BSW Rte_Read/Rte_Write | full BSW framework |
+
+The application source (SWCs + Rte_*.h declarations) is bit-identical across
+all three; only `src/main_<style>.c` and the linked Rte backend differ.
+Application code never sees MCAL types directly — strict
+hardware-blind separation via `Rte_*` declaration-only headers.
+
+> The `rte_os` preset currently builds the structure but its link step is
+> blocked by an upstream bsw-mcal-msp issue (see
+> [docs/upstream-issues.md](docs/upstream-issues.md) #1). Runtime
+> verification is tracked separately.
+
 ## Build Presets
 
 | Preset | Purpose | Requires |
 |---|---|---|
-| `bsw-mcal-msp` | Firmware for LP-MSPM0G3507 | ARM GCC + BSW submodule |
+| `bsw-mcal-msp` | Firmware for LP-MSPM0G3507 (bare-metal) | ARM GCC + BSW submodule |
+| `bsw-mcal-msp-oslite` | Firmware for LP-MSPM0G3507 (Os_Lite) | ARM GCC + BSW submodule |
+| `bsw-mcal-msp-rte` | Firmware for LP-MSPM0G3507 (AUTOSAR RTE + Os) | ARM GCC + BSW (link blocked, see upstream-issues) |
 | `host-test` | Unit tests on host PC | MinGW-w64 (Win) / GCC (Linux/macOS) |
-| `renode-sil` | SIL via Renode emulator | ARM GCC + Renode |
+| `renode-driverlib*` | Renode SIL emulator tests | ARM GCC + Renode |
 
 ---
 
