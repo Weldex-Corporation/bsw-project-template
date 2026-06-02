@@ -211,20 +211,18 @@ if(NOT BUILD_TESTS)
         # mcal_mspm0 (in BSW framework) provides only mcal/mspm0/*_Hw.c overrides.
         target_link_libraries(${PROJECT_NAME} PRIVATE bsw mcal_mspm0 mcal_msp
             ti_driverlib)
-        if(APP_MODEL STREQUAL "rte_os")
-            # Legacy BSW framework files (Rte.c, dispatch.c, debug.c,
-            # mem.c, pool.c, …) still call hal_critical_section_enter
-            # / _exit and hal_system_sw_interrupt_trigger. Pull in the
-            # supporting MSP HAL files. hal_system.c is intentionally
-            # left out because its inline asm fails to assemble on
-            # Cortex-M0+ (see docs/upstream-issues.md #1); the symbols
-            # that legacy code references from it are provided by a
-            # tiny local shim.
-            target_sources(${PROJECT_NAME} PRIVATE
-                "${_msp_dir}/legacy/hal/hal_critical.c"
-                "${_msp_dir}/legacy/hal/hal_mem.c"
-                "${CMAKE_SOURCE_DIR}/src/hal_system_shim.c")
-        endif()
+        # rte_os no longer pulls any bsw-mcal-msp/legacy/hal/*.c file:
+        #   - dispatch.c / Rte.c (the old hal_critical / hal_system /
+        #     hal_mem consumers) are excluded by bsw CMake when
+        #     APP_MODEL=rte_os; Rte_bcc1.c replaces Rte.c's surface.
+        #   - critical.h's CRITICAL_SECTION_ENTER/EXIT macros now expand
+        #     inline to PRIMASK assembly, so debug.c / mem.c / pool.c
+        #     don't need hal_critical.c either.
+        #   - debug.c's hal_system_get_time call was migrated to
+        #     Os_GetCounterValue.
+        # docs/upstream-issues.md Issue #1 is therefore unblocked at
+        # the source level -- no shim file required on the template
+        # side either.
     elseif(PLATFORM STREQUAL "traveo")
         # Traveo target hookup left for the platform owner; mcal_traveo is the
         # BSW-side stub. The Infineon PDL target name to link is project-specific.
