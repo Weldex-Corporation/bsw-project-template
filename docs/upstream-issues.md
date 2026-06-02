@@ -1,6 +1,6 @@
 # Upstream Issues — discovered while bringing up `APP_MODEL=rte_os`
 
-Status: open
+Status: open (Issue #1 — worked around in PR #38, see below)
 Last updated: 2026-06-02
 
 Problems encountered in `bsw` / `bsw-mcal-msp` submodules while wiring the
@@ -12,6 +12,16 @@ on real silicon depends on these landing.
 ---
 
 ## 1. `bsw-mcal-msp` — `hal_system.c` fails to compile on Cortex-M0+
+
+**Status**: ✅ **Worked around in template** ([bsw-project-template
+#38](https://github.com/Weldex-Corporation/bsw-project-template/pull/38)).
+The upstream `hal_system.c` is no longer compiled by `APP_MODEL=rte_os`;
+the symbols that legacy framework code (`dispatch.c`, `Rte.c`, …) still
+references are provided by a tiny local `src/hal_system_shim.c`. The
+upstream `.syntax unified` patch described below is now optional —
+useful only for anyone building the legacy dispatch-backed Os on
+Cortex-M0+, which our rte_os path no longer does.
+
 
 **Symptom**
 
@@ -41,13 +51,20 @@ active when the inline asm is processed.
 flag the C-level cast `(uint32_t *)(start_address + 4)` and would
 remain even after the assembly fix; cosmetic, not blocking.)
 
-**Impact**
+**Impact (historical, before the workaround)**
 
-Blocks `APP_MODEL=rte_os` link: BSW `dispatch.c` / `Os.c` reference
-`hal_system_register_tick_callback` and `hal_system_sw_interrupt_trigger`,
-which live in `hal_system.c` — and that TU does not compile for M0+.
+Blocked `APP_MODEL=rte_os` link: BSW `dispatch.c` / legacy `Os.c`
+referenced `hal_system_register_tick_callback` and
+`hal_system_sw_interrupt_trigger`, which live in `hal_system.c` —
+and that TU did not compile for M0+. The Os_bcc1 + EcuM_bcc1 refactor
+routed around the legacy dispatch backing entirely, but `dispatch.c`
+itself is still pulled into rte_os builds (Rte/SchM use it), so the
+template now ships an `src/hal_system_shim.c` with no-op stubs for the
+4 sw-interrupt entry points + `lock_count` + `hal_system_get_time`
+(forwards to `Os_GetCounterValue`). This satisfies the link without
+bringing `hal_system.c` into the build.
 
-**Fix (verified standalone)**
+**Fix upstream (optional, low priority now)**
 
 Smallest diff — keep UAL semantics, prefix the inline asm with a
 syntax directive:
@@ -69,8 +86,10 @@ approach is preferred.
 
 **Suggested location for the fix**
 
-`bsw-mcal-msp` repo, separate PR. Reference this template repo PR for
-context.
+`bsw-mcal-msp` repo, separate PR. With the template workaround in
+place this is no longer blocking — useful only for users who want
+to compile the legacy dispatch-backed Os against `bsw-mcal-msp` on
+Cortex-M0+ (i.e. not the rte_os path this template uses).
 
 ---
 
@@ -192,11 +211,14 @@ the AUTOSAR `MemIf` definition).
 Each entry needs a separate PR in the corresponding submodule. When a
 fix lands upstream, bump the submodule pointer here and remove the
 entry. The template's `rte_os` runtime status moves from
-"structure-only" → "runtime-verified on LP-MSPM0G3507" when items #1
-(blocker) and #3 (if `CFG_FROM_YAML=ON` is desired) are resolved.
+"structure-only" → "link-verified for Cortex-M0+" (current, after
+PR #38) → "runtime-verified on LP-MSPM0G3507" once Renode SIL +
+hardware soak land.
 
 Cross-references:
 - `docs/iss-1524-debug-architecture.md` — earlier upstream concern
   about BSW debug frontend, also separate from this PR.
 - `CMakeLists.txt` — search `APP_MODEL STREQUAL "rte_os"` for the
-  current scaffolding affected by #1.
+  shim wiring that supersedes the original #1 blocker.
+- `src/hal_system_shim.c` — the local shim file that replaces the
+  M0+-broken `hal_system.c` for rte_os builds.
