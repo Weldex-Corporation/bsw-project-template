@@ -5,8 +5,8 @@ Installs: BSW submodule, platform MCAL submodule, ARM GCC, MinGW-w64 (Windows),
           Renode, pyOCD, CMake, Ninja.
 
 Usage:
-    python _shared/setup.py --platform bsw-mcal-msp [--skip-toolchain]
-    python _shared/setup.py                           # interactive menu
+    python bootstrap/setup.py --platform bsw-mcal-msp [--skip-toolchain]
+    python bootstrap/setup.py                           # interactive menu
 """
 
 import argparse
@@ -28,7 +28,7 @@ SCRIPT_DIR   = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 
 _WORKSPACE_SHARED = Path("/srv/workspaces/_shared/tools/compilers")
-_LOCAL_SHARED     = PROJECT_ROOT / "_shared" / "tools" / "compilers"
+_LOCAL_SHARED     = PROJECT_ROOT / "bootstrap" / "tools" / "compilers"
 TOOLS_DIR = _WORKSPACE_SHARED if _WORKSPACE_SHARED.exists() else _LOCAL_SHARED
 
 PLATFORMS_JSON = SCRIPT_DIR / "platforms.json"
@@ -61,7 +61,7 @@ RENODE_URLS = {
     "Darwin":  f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode-{RENODE_VERSION}-dotnet.osx-arm64-portable.dmg",
 }
 RENODE_WINGET_ID = "Renode.Renode"
-RENODE_LOCAL_DIR = PROJECT_ROOT / "_shared" / "tools" / "renode"
+RENODE_LOCAL_DIR = PROJECT_ROOT / "bootstrap" / "tools" / "renode"
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -375,7 +375,7 @@ def verify():
     if renode_found:
         ok("Renode found")
     else:
-        warn("Renode — not in PATH (install manually or use portable zip in _shared/tools/renode)")
+        warn("Renode — not in PATH (install manually or use portable zip in bootstrap/tools/renode)")
 
     print(f"\n  BSW  : {BSW_PATH}")
     print(f"  Tools: {TOOLS_DIR}")

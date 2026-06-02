@@ -1,6 +1,6 @@
 build/
-_shared/tools/
-_shared/__pycache__/
+bootstrap/tools/
+bootstrap/__pycache__/
 *.elf
 *.bin
 *.hex

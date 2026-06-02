@@ -7,7 +7,7 @@ LED blink (PA0) is the hello world — compile, test, and flash in one setup scr
 
 ```
 bsw-project-template/
-├── _shared/
+├── bootstrap/
 │   ├── bootstrap.ps1       Windows entry point
 │   ├── bootstrap.sh        macOS / Linux entry point
 │   ├── setup.py            Common setup logic (submodule + toolchain + pyOCD)
@@ -94,14 +94,14 @@ cd bsw-project-template
 Open **PowerShell** (not CMD) and run:
 
 ```powershell
-.\_shared\bootstrap.ps1 -Platform bsw-mcal-msp
+.\bootstrap\bootstrap.ps1 -Platform bsw-mcal-msp
 ```
 
 The script will:
 1. Check Python 3.8+ → install via `winget` if missing
 2. Init BSW submodule → `git submodule update --init bsw`
 3. Init platform MCAL → `git submodule update --init bsw/platform/bsw-mcal-msp`
-4. Download ARM GCC 13.3.rel1 (Windows zip) → `_shared/tools/compilers/`
+4. Download ARM GCC 13.3.rel1 (Windows zip) → `bootstrap/tools/compilers/`
 5. Install MinGW-w64 via MSYS2 → `winget install MSYS2.MSYS2`
 6. Install Renode → `winget install Antmicro.Renode`
 7. `pip install pyocd cmake ninja robotframework`
@@ -179,15 +179,15 @@ cd bsw-project-template
 ### Step 2 — Run Bootstrap
 
 ```bash
-chmod +x _shared/bootstrap.sh
-./_shared/bootstrap.sh --platform bsw-mcal-msp
+chmod +x bootstrap/bootstrap.sh
+./bootstrap/bootstrap.sh --platform bsw-mcal-msp
 ```
 
 The script will:
 1. Check Python 3.8+ → prompt `brew install python3` if missing
 2. Init BSW + platform MCAL submodules
-3. Download ARM GCC 13.3.rel1 (macOS tar.xz) → `_shared/tools/compilers/`
-4. Download Renode portable zip → `_shared/tools/renode/`
+3. Download ARM GCC 13.3.rel1 (macOS tar.xz) → `bootstrap/tools/compilers/`
+4. Download Renode portable zip → `bootstrap/tools/renode/`
 5. `pip3 install pyocd cmake ninja robotframework`
 6. Install pyOCD target pack `TexasInstruments.MSPM0G_DFP`
 
@@ -235,14 +235,14 @@ cd bsw-project-template
 ### Step 2 — Run Bootstrap
 
 ```bash
-chmod +x _shared/bootstrap.sh
-./_shared/bootstrap.sh --platform bsw-mcal-msp
+chmod +x bootstrap/bootstrap.sh
+./bootstrap/bootstrap.sh --platform bsw-mcal-msp
 ```
 
 The script will:
 1. Check Python 3.8+ → prompt package manager install if missing
 2. Init BSW + platform MCAL submodules
-3. Download ARM GCC 13.3.rel1 (Linux tar.xz) → `_shared/tools/compilers/`
+3. Download ARM GCC 13.3.rel1 (Linux tar.xz) → `bootstrap/tools/compilers/`
 4. Install Renode `.deb` via `dpkg` (Debian/Ubuntu) or portable zip
 5. `pip3 install pyocd cmake ninja robotframework`
 6. Install pyOCD target pack `TexasInstruments.MSPM0G_DFP`
@@ -250,7 +250,7 @@ The script will:
 > **Debian/Ubuntu** pre-install shortcut:
 > ```bash
 > sudo apt install gcc-arm-none-eabi cmake ninja-build python3-pip
-> ./_shared/bootstrap.sh --platform bsw-mcal-msp --skip-toolchain
+> ./bootstrap/bootstrap.sh --platform bsw-mcal-msp --skip-toolchain
 > ```
 
 > **pyOCD udev rules** (required for USB access without sudo):
@@ -285,13 +285,13 @@ cmake --build build/bsw-mcal-msp --target flash
 
 ## Adding a New Platform
 
-1. Add an entry to `_shared/platforms.json`
+1. Add an entry to `bootstrap/platforms.json`
 2. Add a board YAML to `boards/`
 3. Add a CMake preset to `CMakePresets.json`
 4. Run bootstrap with the new platform key:
 
 ```bash
-./_shared/bootstrap.sh --platform bsw-mcal-traveo
+./bootstrap/bootstrap.sh --platform bsw-mcal-traveo
 cmake --preset bsw-mcal-traveo
 ```
 

@@ -2,7 +2,7 @@
 #
 # Dot-source this once per PowerShell session before running cmake/ctest:
 #
-#     . .\_shared\setenv.ps1
+#     . .\bootstrap\setenv.ps1
 #
 # Adds discovered toolchain locations to $env:PATH for the current session
 # only (no system PATH changes). Idempotent — safe to re-run.
@@ -28,8 +28,8 @@ function Find-Renode {
         "$env:ProgramFiles\Renode",
         "${env:ProgramFiles(x86)}\Renode\bin",
         "${env:ProgramFiles(x86)}\Renode",
-        (Join-Path $Root "_shared\tools\renode\bin"),
-        (Join-Path $Root "_shared\tools\renode")
+        (Join-Path $Root "bootstrap\tools\renode\bin"),
+        (Join-Path $Root "bootstrap\tools\renode")
     )
     # winget portable cache lives under a versioned/hashed dir
     $wingetCache = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages"
@@ -55,7 +55,7 @@ Add-PathEntry "C:\msys64\ucrt64\bin" "MinGW ucrt64"
 # ARM GCC (local-installed by bootstrap; not strictly needed since the
 # toolchain file uses an absolute path, but exposing it lets you invoke
 # arm-none-eabi-gcc directly)
-$armBin = Join-Path $Root "_shared\tools\compilers\gnu-arm\13.3.rel1\bin"
+$armBin = Join-Path $Root "bootstrap\tools\compilers\gnu-arm\13.3.rel1\bin"
 Add-PathEntry $armBin "ARM GCC 13.3"
 
 # Python Scripts dir (pyocd, robotframework, ninja installed via pip)

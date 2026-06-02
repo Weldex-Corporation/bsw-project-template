@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BSW Project Template - environment setup
-# Usage:   source _shared/env-setup.sh
+# Usage:   source bootstrap/env-setup.sh
 # Exports: PATH for cmake/ninja/ARM GCC, BSW_ENV, ARM_GCC_PATH
 # Prints:  one-line banner showing detected environment + tool versions
 
@@ -8,7 +8,7 @@ _bsw_script="${BASH_SOURCE[0]:-$0}"
 _bsw_repo="$(cd "$(dirname "$_bsw_script")/.." && pwd)"
 
 _bsw_workspace_shared=/srv/workspaces/_shared/tools
-_bsw_repo_shared="$_bsw_repo/_shared/tools"
+_bsw_repo_shared="$_bsw_repo/bootstrap/tools"
 
 # --- environment detection -------------------------------------------------
 # ELM server is identified by the shared workspace mount. ELM_API_TOKEN is
