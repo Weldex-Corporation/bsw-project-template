@@ -13,7 +13,7 @@ set(BOARD        "lp_mspm0g3507" CACHE STRING "Target board (boards/*.yaml)")
 set(BSW_PLATFORM "bsw-mcal-msp"  CACHE STRING "BSW platform submodule")
 set(PYOCD_TARGET "MSPM0G3507"    CACHE STRING "pyOCD target name")
 set(PLATFORM     "mspm0"         CACHE STRING "Build platform — passed to BSW: posix | mspm0 | traveo")
-set(APP_MODEL    "baremetal"     CACHE STRING "App entry model: baremetal | oslite")
+set(APP_MODEL    "baremetal"     CACHE STRING "App entry model: baremetal | oslite | rte_os")
 option(BUILD_TESTS "Build unit tests (host build only)" OFF)
 
 if(BUILD_TESTS)
@@ -73,6 +73,11 @@ if(NOT BUILD_TESTS)
         # Os_Lite.c is not part of mcal_msp; compile it here
         list(APPEND _app_sources
             "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/src/Os_Lite.c")
+    elseif(APP_MODEL STREQUAL "rte_os")
+        # Full AUTOSAR stack — BSW Rte + Os (Task + Alarm). Pulls in the
+        # bsw framework lib for real (not stripped by gc-sections) since the
+        # symbols Os_Init / Rte_Init / EcuM_Init / Os_StartOS are called.
+        set(_app_sources src/main_rte_os.c)
     elseif(APP_MODEL STREQUAL "periph_test")
         # Standalone peripheral test — no BSW app framework, driverlib only.
         set(_app_sources tests/sil/main_periph_test.c)
@@ -105,7 +110,11 @@ if(NOT BUILD_TESTS)
             src/cfg/Port_Cfg.c
             src/cfg/Dio_Cfg.c
         )
-        list(APPEND _app_sources src/rte/static/Rte_Impl.c)
+        if(APP_MODEL STREQUAL "rte_os")
+            list(APPEND _app_sources src/rte/bsw/Rte_Impl.c)
+        else()
+            list(APPEND _app_sources src/rte/static/Rte_Impl.c)
+        endif()
     endif()
     # Board layer (mspm0 — both real silicon and Renode SIL targets). Provides:
     #   - Cortex-M0+ startup file (vector table, Reset_Handler) from SDK
@@ -197,6 +206,16 @@ if(NOT BUILD_TESTS)
         # contract (Dio_Hw.c, …) AND the low-level hal_*.c for this platform.
         # mcal_mspm0 (in BSW framework) provides only mcal/mspm0/*_Hw.c overrides.
         target_link_libraries(${PROJECT_NAME} PRIVATE bsw mcal_mspm0 mcal_msp)
+        if(APP_MODEL STREQUAL "rte_os")
+            # The rte_os style uses BSW Os/Rte/EcuM which call into
+            # hal_critical_*, hal_system_*, etc. These live in
+            # bsw-mcal-msp/legacy/hal/ but are not compiled into mcal_msp
+            # by default. Compile them here for this APP_MODEL only.
+            target_sources(${PROJECT_NAME} PRIVATE
+                "${_msp_dir}/legacy/hal/hal_critical.c"
+                "${_msp_dir}/legacy/hal/hal_system.c"
+                "${_msp_dir}/legacy/hal/hal_mem.c")
+        endif()
     elseif(PLATFORM STREQUAL "traveo")
         # Traveo target hookup left for the platform owner; mcal_traveo is the
         # BSW-side stub. The Infineon PDL target name to link is project-specific.
