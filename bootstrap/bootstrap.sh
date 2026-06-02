@@ -30,11 +30,28 @@ if [ -z "$PYTHON" ]; then
     echo "[bootstrap] ERROR: Python 3.8+ is required."
     if [[ "$OSTYPE" == "darwin"* ]]; then
         echo "  Install via: brew install python3"
+        if ! command -v brew &>/dev/null; then
+            echo "  (Homebrew first: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\")"
+        fi
     else
         echo "  Install via: sudo apt install python3  (Debian/Ubuntu)"
         echo "            or: sudo dnf install python3  (Fedora)"
     fi
     exit 1
+fi
+
+# ── macOS prerequisites note ─────────────────────────────────────────────────
+# Renode on macOS needs the .NET 8 runtime. Homebrew Cask (`brew install
+# --cask renode`) pulls it in via its formula, but the portable .dmg
+# does NOT — surface this once up front so users on the dmg path don't
+# silently hit "command not found: dotnet" at SIL run time.
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    if ! command -v dotnet &>/dev/null; then
+        echo "[bootstrap] Note: Renode needs the .NET 8 runtime on macOS."
+        echo "            Install via: brew install --cask dotnet"
+        echo "            (Homebrew Cask 'renode' pulls it in automatically;"
+        echo "             only relevant if you go the portable-dmg path.)"
+    fi
 fi
 
 # ── Run setup.py ─────────────────────────────────────────────────────────────
