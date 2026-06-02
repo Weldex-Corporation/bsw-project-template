@@ -69,10 +69,9 @@ add_compile_definitions(BOARD_${BOARD_UPPER})
 if(NOT BUILD_TESTS)
     if(APP_MODEL STREQUAL "oslite")
         set(_app_sources src/main_oslite.c)
-        add_compile_definitions(OS_USE_LITE)
-        # Os_Lite.c is not part of mcal_msp; compile it here
-        list(APPEND _app_sources
-            "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/src/Os_Lite.c")
+        # Os_Lite (header + .c) is owned by bsw — it ships Os_Lite.c
+        # in libbsw.a and publishes OS_USE_LITE PUBLIC, so this block
+        # only needs to pick the application entry point.
     elseif(APP_MODEL STREQUAL "rte_os")
         # Full AUTOSAR stack — BSW Rte + Os (Task + Alarm). Pulls in the
         # bsw framework lib for real (not stripped by gc-sections) since the
@@ -169,10 +168,8 @@ if(NOT BUILD_TESTS)
             "${CMAKE_SOURCE_DIR}/src/rte"
             "${CMAKE_SOURCE_DIR}/src/cfg")
     endif()
-    if(APP_MODEL STREQUAL "oslite")
-        target_include_directories(${PROJECT_NAME} PRIVATE
-            "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/include")
-    endif()
+    # Os_Lite.h lives in bsw's autosar/ PUBLIC include dir now, so
+    # APP_MODEL=oslite no longer needs a side include path.
     if(PLATFORM STREQUAL "mspm0")
         # Include paths for syscfg_lp.c + ti_msp_dl_config.c + startup file
         # to find ti_msp_dl_config.h and the SDK headers.
