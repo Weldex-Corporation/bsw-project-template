@@ -43,6 +43,23 @@ if [ -d "$_bsw_arm_root/bin" ]; then
   esac
 fi
 
+# --- PATH: Renode -----------------------------------------------------------
+# macOS dmg installs Renode.app; Linux/Windows use a flat bin/ layout.
+_bsw_renode_root="$_bsw_repo_shared/renode"
+if [ -d "$_bsw_renode_root/Renode.app/Contents/MacOS" ]; then
+  _bsw_renode_bin="$_bsw_renode_root/Renode.app/Contents/MacOS"
+elif [ -d "$_bsw_renode_root/bin" ]; then
+  _bsw_renode_bin="$_bsw_renode_root/bin"
+elif [ -d "$_bsw_renode_root" ] && [ -x "$_bsw_renode_root/renode" ]; then
+  _bsw_renode_bin="$_bsw_renode_root"
+fi
+if [ -n "${_bsw_renode_bin:-}" ]; then
+  case ":$PATH:" in
+    *":$_bsw_renode_bin:"*) ;;
+    *) export PATH="$_bsw_renode_bin:$PATH" ;;
+  esac
+fi
+
 # --- banner ----------------------------------------------------------------
 printf '[bsw env] mode=%s  tools=%s\n' "$BSW_ENV" "$_bsw_tools"
 if [ "$BSW_ENV" = "elm-server" ]; then
@@ -53,4 +70,5 @@ printf '[bsw env] cmake : %s\n'             "$(_v cmake --version             ||
 printf '[bsw env] ninja : %s\n'             "$(_v ninja --version             || echo NOT_FOUND)"
 printf '[bsw env] host-gcc: %s\n'           "$(_v gcc --version               || echo NOT_FOUND)"
 printf '[bsw env] arm-gcc: %s\n'            "$(_v arm-none-eabi-gcc --version || echo NOT_FOUND)"
-unset _v _bsw_script _bsw_repo _bsw_workspace_shared _bsw_repo_shared _bsw_tools _bsw_arm_ver _bsw_arm_root
+printf '[bsw env] renode : %s\n'            "$(_v renode --version             || echo NOT_FOUND)"
+unset _v _bsw_script _bsw_repo _bsw_workspace_shared _bsw_repo_shared _bsw_tools _bsw_arm_ver _bsw_arm_root _bsw_renode_root _bsw_renode_bin

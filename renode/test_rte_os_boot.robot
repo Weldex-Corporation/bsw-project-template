@@ -19,9 +19,13 @@ Resource          ${RENODEKEYWORDS}
 *** Variables ***
 ${ELF}          ${CURDIR}/../build/bsw-mcal-msp-rte/bsw_project_template.elf
 ${MODELS_DIR}   ${CURDIR}/../bsw-mcal-msp/renode/models
-${DOUT_ADDR}    0x400A1280
-${LED_PIN}      0
-${LED_MASK}     0x00000001
+${DOUT_ADDR}          0x400A1280
+${LED_PIN}            0
+${LED_MASK}           0x00000001
+# GPIOB DIN — used to inject button state (S2 = PB21, active LOW)
+${GPIOB_DIN_ADDR}    0x400A3380
+${BTN_S2_PRESSED}    0xFFDFFFFF
+${BTN_S2_RELEASED}   0xFFFFFFFF
 
 *** Keywords ***
 Prepare Machine
@@ -43,6 +47,14 @@ Read LED Level
     ${dout_int}=    Convert To Integer    ${dout.strip()}    16
     ${level}=    Evaluate    (${dout_int} >> ${LED_PIN}) & 1
     [Return]    ${level}
+
+Press S2
+    [Documentation]    Inject S2 button press by clearing PB21 in GPIOB DIN.
+    Execute Command    sysbus WriteDoubleWord ${GPIOB_DIN_ADDR} ${BTN_S2_PRESSED}
+
+Release S2
+    [Documentation]    Release S2 button by setting PB21 back in GPIOB DIN.
+    Execute Command    sysbus WriteDoubleWord ${GPIOB_DIN_ADDR} ${BTN_S2_RELEASED}
 
 *** Test Cases ***
 Boot Without Fault
@@ -72,8 +84,8 @@ Alarm Walks Cause Mode And Blink Tasks To Run
     ...                fire. We can't directly observe SWC entry from
     ...                Renode, but the LED stays OFF in initial mode
     ...                (OFF -> BLINK_100ms cycle requires a button
-    ...                press at PA14 — not simulated here). What we
-    ...                CAN check is that the system runs without
+    ...                press at PB21 — see LED Toggle test below). What
+    ...                we CAN check is that the system runs without
     ...                faulting and the PC stays in the expected text
     ...                range after 400 ms of tick-driven scheduling.
     Execute Command    emulation RunFor "00:00:00.400"
@@ -83,3 +95,37 @@ Alarm Walks Cause Mode And Blink Tasks To Run
     # Loose sanity bound — PC must be within the 128 KiB flash region.
     ${pc}=    Convert To Integer    ${pc_str}    16
     Should Be True    ${pc} < 0x00020000
+
+LED Toggles After Button Press
+    [Documentation]    Simulate S2 button press on PB21 (GPIOB DIN) to
+    ...                advance mode from OFF to BLINK_100MS, then verify
+    ...                that LED (PA0) toggles.
+    ...                Active-LOW LED: DOUT bit0=1 means LED off,
+    ...                DOUT bit0=0 means LED on.
+
+    # 1. Boot and settle — LED should be OFF (bit0=1, active LOW)
+    Execute Command    emulation RunFor "00:00:00.100"
+    ${level0}=    Read LED Level
+    Should Be Equal As Integers    ${level0}    1
+    ...    LED should be OFF (DOUT bit0=1) in initial RTE_MODE_OFF
+
+    # 2. Press S2: clear bit 21 in GPIOB DIN (active-low button)
+    Press S2
+
+    # 3. Run 40 ms — debounce (20 ms) fires, mode OFF -> BLINK_100MS
+    Execute Command    emulation RunFor "00:00:00.040"
+
+    # 4. Release S2
+    Release S2
+
+    # 5. Run 200 ms — BLINK_100MS toggles LED every 100 ms
+    Execute Command    emulation RunFor "00:00:00.200"
+    ${levelA}=    Read LED Level
+
+    # 6. Run another 100 ms — LED must have toggled
+    Execute Command    emulation RunFor "00:00:00.100"
+    ${levelB}=    Read LED Level
+
+    Log To Console    \nLED after blink: levelA=${levelA} levelB=${levelB}
+    Should Not Be Equal As Integers    ${levelA}    ${levelB}
+    ...    LED must toggle between consecutive 100 ms windows in BLINK_100MS mode

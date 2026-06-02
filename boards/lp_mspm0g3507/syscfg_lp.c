@@ -40,8 +40,8 @@ void SYSCFG_DL_initPower(void)
     DL_GPIO_initDigitalOutput(IOMUX_PINCM1);
     DL_GPIO_enableOutput(GPIOA, DL_GPIO_PIN_0);
 
-    /* PA14 — USER button S2 input with pull-up (IOMUX_PINCM36), active low */
-    DL_GPIO_initDigitalInputFeatures(IOMUX_PINCM36,
+    /* PB21 — USER button S2 input with pull-up (IOMUX_PINCM49), active low */
+    DL_GPIO_initDigitalInputFeatures(IOMUX_PINCM49,
         DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_PULL_UP,
         DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
 }

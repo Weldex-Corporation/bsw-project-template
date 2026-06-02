@@ -64,9 +64,9 @@ MINGW_MSYS2_PATH = Path("C:/msys64")
 MINGW_UCRT_BIN   = MINGW_MSYS2_PATH / "ucrt64/bin"
 
 # ── Renode ────────────────────────────────────────────────────────────────
-# v1.16.0 is the first release with a Windows portable asset; older tags
-# ship only .msi for Windows.
-RENODE_VERSION = "1.16.0"
+# v1.16.1 — v1.16.0 was the first release with a Windows portable asset
+# but lacked the request.Type API needed by our .robot tests.
+RENODE_VERSION = "1.16.1"
 # macOS portable assets are .dmg per architecture; Linux is .tar.gz;
 # Windows is .zip. Keyed by (OS, arch) so Apple Silicon and Intel get
 # the right binary.
@@ -219,9 +219,16 @@ def init_bsw():
 
 # ── Step 2: Platform MCAL submodule ──────────────────────────────────────
 
-def init_platform(cfg):
+def init_platform(cfg, platform_key):
     sub = cfg["submodule_path"]
     target = BSW_PATH / sub
+    # Root-level submodule check: the platform may already exist at
+    # PROJECT_ROOT/<platform_key> as a top-level submodule instead of
+    # nested under bsw/.
+    root_alt = PROJECT_ROOT / platform_key
+    if (root_alt / ".git").exists() or (root_alt.is_dir() and any(root_alt.iterdir())):
+        ok(f"Platform '{platform_key}' available at project root ({root_alt})")
+        return
     if (target / ".git").exists():
         ok(f"Platform submodule '{sub}' already initialized")
         return
@@ -486,7 +493,7 @@ def main():
 
     if not args.skip_bsw:
         init_bsw()
-        init_platform(cfg)
+        init_platform(cfg, chosen)
 
     if not args.skip_toolchain:
         install_arm_gcc()

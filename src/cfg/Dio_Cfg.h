@@ -11,7 +11,7 @@
 #include "Dio.h"
 
 #define DIO_CH_LED_GREEN   ((Dio_ChannelType)0u)    /* PA0  */
-#define DIO_CH_BTN_S2      ((Dio_ChannelType)14u)   /* PA14 */
+#define DIO_CH_BTN_S2      ((Dio_ChannelType)((1u << 8u) | 21u))  /* PB21 */
 
 extern const Dio_ConfigType Dio_Config;
 

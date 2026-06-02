@@ -51,7 +51,7 @@ What to look for in the output:
 |---|---|
 | `[setup] ✓ ARM GCC installed (Darwin/arm64)` | Apple Silicon got the native arm64 toolchain — no Rosetta needed. Intel Macs should show `(Darwin/x86_64)`. |
 | `[setup] ✓ Renode installed via brew --cask renode` | brew is present, used the cask path — also pulls .NET 8 runtime. |
-| `[setup] ⚠ brew --cask renode failed - falling back to .dmg download` | brew refused — falls back to `hdiutil attach` + `ditto` copy. |
+| `[setup] ⚠ brew --cask renode failed - falling back to .dmg download` | brew refused — falls back to `hdiutil attach` + `ditto` copy. **This is expected** — the `renode` cask is not always registered in Homebrew. The dmg fallback is the normal path on macOS. |
 | `[bootstrap] Note: Renode needs the .NET 8 runtime on macOS.` | Only printed when `dotnet` is missing AND brew isn't used to install Renode. Manual fix: `brew install --cask dotnet`. |
 | `[setup] ✗ ...` | Any line starting with `✗` is a hard failure — capture it. |
 
@@ -66,10 +66,10 @@ source bootstrap/env-setup.sh
 Verify:
 
 ```bash
-arm-none-eabi-gcc --version   # 13.3.1
+arm-none-eabi-gcc --version   # 13.3.rel1 (bootstrap) or system-installed version
 cmake --version               # 3.20+
 ninja --version
-renode --version              # or: renode-test --version
+renode --version              # 1.16.1 — or: renode-test --version
 pyocd --version
 ```
 
@@ -100,16 +100,19 @@ cmake -S . -B build/rte -G Ninja \
 ninja -C build/rte
 ```
 
-Expected `.bin` sizes (should match the Linux build to the byte):
+Expected `.bin` sizes (approximate — exact values vary with GCC version):
 
-| APP_MODEL  | Size  |
+| APP_MODEL  | Size (approx) |
 |---|---|
-| baremetal  | ~2940 B |
-| oslite     | ~2964 B |
-| rte_os     | ~9740 B |
+| baremetal  | 2900–3100 B |
+| oslite     | 2900–3100 B |
+| rte_os     | 9600–10200 B |
 
-If a size is drastically different the build picked up an unexpected
-source — capture `ninja -v -C build/<mode>` and report.
+Sizes depend on the ARM GCC version (`13.3.rel1` from bootstrap vs a
+system-installed toolchain). Cross-platform builds with the **same**
+compiler should match to the byte. If a size is drastically outside
+these ranges the build picked up an unexpected source — capture
+`ninja -v -C build/<mode>` and report.
 
 ---
 
@@ -126,6 +129,11 @@ cp -r build/rte/* build/bsw-mcal-msp-rte/
 renode-test renode/test_rte_os_boot.robot
 renode-test renode/test_rte_os_wcet.robot
 ```
+
+> **Renode version**: These tests require **Renode 1.16.1** or later.
+> Version 1.16.0 is missing the `request.Type` API used by the test
+> scripts and will fail all tests. The bootstrap script installs 1.16.1
+> by default.
 
 Pass criteria:
 
