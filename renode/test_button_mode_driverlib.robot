@@ -66,7 +66,7 @@ Prepare Machine
     [Documentation]    Fresh machine + real driverlib ELF for every test.
     Reset Emulation
     Execute Command    mach create "lp_mspm0g3507"
-    Execute Command    machine LoadPlatformDescription @${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/mspm0g3507_driverlib.repl
+    Execute Command    machine LoadPlatformDescription @${CURDIR}/../bsw-mcal-msp/renode/mspm0g3507_driverlib.repl
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_gpio.py 0x400A0000 0x2000 False "gpioA"
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_gpio.py 0x400A2000 0x2000 False "gpioB"
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_sysctl.py 0x400AF000 0x3000 False "sysctl"
