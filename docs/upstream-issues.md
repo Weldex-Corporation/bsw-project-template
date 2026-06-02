@@ -180,6 +180,41 @@ support in `_shared/setup.py` (option 3).
 
 ---
 
+## 5. (Watching) `bsw-mcal-msp` — Renode TIMG7 model doesn't fire time-based IRQ
+
+**Symptom (SIL-only, real silicon unaffected)**
+
+`renode/models/mspm0_timg7.py` correctly models register writes from
+`Gpt_Init` / `Gpt_StartTimer` (PWREN / CPS / IMASK / CTRCTL=EN|REPEAT /
+LOAD all latch as expected) but the time-based fire path never
+delivers an IRQ to NVIC. `os_counter_ms` therefore stays at 0 in the
+rte_os SIL even though the firmware is configured correctly.
+
+The software-trigger (ISET) path inside the same model works —
+`test_missing_periph.robot` exercises it. Only the time-based
+`ScheduleAction` / `LimitTimer` paths are broken.
+
+**Impact**
+
+SIL coverage of any periodic-tick firmware (rte_os, oslite) is
+incomplete. Real-silicon and bare-metal builds are unaffected
+because TI driverlib programs the actual TIMG7 IP which fires for
+real on a LaunchPad.
+
+**Suggested fix**
+
+See `docs/renode-timg7-model-gap.md` — the cleanest fix is to add a
+native Renode `LimitTimer` in `mspm0g3507.repl` wired to NVIC IRQ 20.
+The Python model continues to handle register state; the native timer
+handles IRQ generation. A heavier alternative is to rewrite the model
+as a proper C# peripheral.
+
+**Suggested location for the fix**
+
+`bsw-mcal-msp` repo, `renode/mspm0g3507.repl` + `renode/models/`.
+
+---
+
 ## 4. (Watching) `bsw` — `Fls.h` redefines `MEMIF_JOB_FAILED`
 
 **Symptom (warning, not blocking)**
