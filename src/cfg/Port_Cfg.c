@@ -16,7 +16,7 @@ static const Port_PinConfigType s_pins[] = {
         .modeChangeable       = FALSE,
     },
     {
-        .pin                  = PORT_PIN_PA14_BTN_S2,
+        .pin                  = PORT_PIN_PB21_BTN_S2,
         .direction            = PORT_PIN_IN,
         .initialMode          = PORT_PIN_MODE_GPIO,
         .directionChangeable  = FALSE,

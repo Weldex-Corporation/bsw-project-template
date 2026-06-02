@@ -14,7 +14,7 @@
 #include "Port.h"
 
 #define PORT_PIN_PA0_LED_GREEN   ((Port_PinType)((0u << 8u) | 0u))
-#define PORT_PIN_PA14_BTN_S2     ((Port_PinType)((0u << 8u) | 14u))
+#define PORT_PIN_PB21_BTN_S2     ((Port_PinType)((1u << 8u) | 21u))
 
 extern const Port_ConfigType Port_Config;
 
