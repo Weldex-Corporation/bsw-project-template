@@ -1,5 +1,5 @@
 # BSW Project Template — Windows Bootstrap
-# Run from project root: .\_shared\bootstrap.ps1 -Platform bsw-mcal-msp
+# Run from project root: .\bootstrap\bootstrap.ps1 -Platform bsw-mcal-msp
 #
 # If you hit "running scripts is disabled on this system", launch via the
 # included bootstrap.bat wrapper, which sets -ExecutionPolicy Bypass.

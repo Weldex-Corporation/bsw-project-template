@@ -170,13 +170,13 @@ clone without an extra setup step.
 2. Add a `bsw-mcal-msp` CMake step that auto-runs `parse_iomux.py` from
    the SDK header at configure time, with a clear error if the SDK
    header is not found.
-3. Add `_shared/setup.py` (template-side) bootstrap to fetch / regenerate
+3. Add `bootstrap/setup.py` (template-side) bootstrap to fetch / regenerate
    the chip DB on first run.
 
 **Suggested location for the fix**
 
 Combination — primary in `bsw-mcal-msp` (option 1 or 2), template
-support in `_shared/setup.py` (option 3).
+support in `bootstrap/setup.py` (option 3).
 
 ---
 
