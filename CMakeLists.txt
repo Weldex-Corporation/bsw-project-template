@@ -75,16 +75,16 @@ if(NOT BUILD_TESTS)
             "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/src/Os_Lite.c")
     elseif(APP_MODEL STREQUAL "periph_test")
         # Standalone peripheral test — no BSW app framework, driverlib only.
-        set(_app_sources src/main_periph_test.c)
+        set(_app_sources tests/sil/main_periph_test.c)
     elseif(APP_MODEL STREQUAL "fullperiph_test")
         # All-peripheral SIL test — raw MMIO, no driverlib or BSW framework.
-        set(_app_sources src/main_fullperiph_test.c)
+        set(_app_sources tests/sil/main_fullperiph_test.c)
     elseif(APP_MODEL STREQUAL "missing_periph_test")
         # UART/DMA/WWDT/TIMG7/TIMG8 SIL test — raw MMIO, no driverlib or BSW framework.
-        set(_app_sources src/main_missing_periph_test.c)
+        set(_app_sources tests/sil/main_missing_periph_test.c)
     elseif(APP_MODEL STREQUAL "timg_test")
         # TIMG0/TIMG6/TIMG12 IRQ model test + ADC1 — raw MMIO.
-        set(_app_sources src/main_timg_test.c)
+        set(_app_sources tests/sil/main_timg_test.c)
     else()
         set(_app_sources src/main_baremetal.c)
     endif()
