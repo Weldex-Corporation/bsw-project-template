@@ -51,7 +51,7 @@ Prepare Machine
     [Documentation]    Fresh machine for every test; load ADC + GPIO models.
     Reset Emulation
     Execute Command    mach create "lp_mspm0g3507_periph"
-    Execute Command    machine LoadPlatformDescription @${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/mspm0g3507_periph.repl
+    Execute Command    machine LoadPlatformDescription @${CURDIR}/../bsw-mcal-msp/renode/mspm0g3507_periph.repl
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_adc12.py 0x40000000 0x2000 False "adc0"
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_timg.py 0x40084000 0x2000 False "timg0"
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_gpio.py 0x400A0000 0x2000 False "gpioA"

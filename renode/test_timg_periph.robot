@@ -84,7 +84,7 @@ Prepare Machine
     [Documentation]    Build Renode machine with TIMG0/6/12 and ADC1 models.
     Reset Emulation
     Execute Command    mach create "lp_mspm0g3507_timg"
-    Execute Command    machine LoadPlatformDescription @${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/mspm0g3507_periph.repl
+    Execute Command    machine LoadPlatformDescription @${CURDIR}/../bsw-mcal-msp/renode/mspm0g3507_periph.repl
     # Support models
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_sysctl.py 0x400AF000 0x3000 False "sysctl"
     Execute Command    machine PyDevFromFile @${MODELS_DIR}/mspm0_gpio.py 0x400A0000 0x2000 False "gpioA"
