@@ -185,6 +185,10 @@ if(NOT BUILD_TESTS)
             "${_msp_dir}/sdk/ti/driverlib")
         target_compile_definitions(${PROJECT_NAME} PRIVATE
             PLATFORM_MSPM0 __MSPM0G3507__ __ARM_ARCH_6M__ __FPU_PRESENT=0)
+        # Note: ti_driverlib is re-linked at the END of the libraries
+        # list below so it can resolve DL_Timer_* / DL_GPIO_* / …
+        # references coming out of mcal_msp (Gpt_Hw.c etc.). Order
+        # matters for static archive linkers.
         target_link_libraries(${PROJECT_NAME} PRIVATE ti_driverlib)
         set(_linker_script
             "${_msp_dir}/examples/rgb_led_pwm/mspm0g3507.ld")
@@ -205,16 +209,21 @@ if(NOT BUILD_TESTS)
         # mspm0: mcal_msp (from bsw-mcal-msp submodule) ships the full AUTOSAR
         # contract (Dio_Hw.c, …) AND the low-level hal_*.c for this platform.
         # mcal_mspm0 (in BSW framework) provides only mcal/mspm0/*_Hw.c overrides.
-        target_link_libraries(${PROJECT_NAME} PRIVATE bsw mcal_mspm0 mcal_msp)
+        target_link_libraries(${PROJECT_NAME} PRIVATE bsw mcal_mspm0 mcal_msp
+            ti_driverlib)
         if(APP_MODEL STREQUAL "rte_os")
-            # The rte_os style uses BSW Os/Rte/EcuM which call into
-            # hal_critical_*, hal_system_*, etc. These live in
-            # bsw-mcal-msp/legacy/hal/ but are not compiled into mcal_msp
-            # by default. Compile them here for this APP_MODEL only.
+            # Legacy BSW framework files (Rte.c, dispatch.c, debug.c,
+            # mem.c, pool.c, …) still call hal_critical_section_enter
+            # / _exit and hal_system_sw_interrupt_trigger. Pull in the
+            # supporting MSP HAL files. hal_system.c is intentionally
+            # left out because its inline asm fails to assemble on
+            # Cortex-M0+ (see docs/upstream-issues.md #1); the symbols
+            # that legacy code references from it are provided by a
+            # tiny local shim.
             target_sources(${PROJECT_NAME} PRIVATE
                 "${_msp_dir}/legacy/hal/hal_critical.c"
-                "${_msp_dir}/legacy/hal/hal_system.c"
-                "${_msp_dir}/legacy/hal/hal_mem.c")
+                "${_msp_dir}/legacy/hal/hal_mem.c"
+                "${CMAKE_SOURCE_DIR}/src/hal_system_shim.c")
         endif()
     elseif(PLATFORM STREQUAL "traveo")
         # Traveo target hookup left for the platform owner; mcal_traveo is the

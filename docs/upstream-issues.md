@@ -24,35 +24,48 @@ arm-none-eabi-gcc … -mcpu=cortex-m0plus -mthumb -mfloat-abi=soft …
 
 **Where**
 
-`bsw-mcal-msp/legacy/hal/hal_system.c`, specifically the
-`hal_system_start_application` function (bootloader application-jump
-pattern). The compiler emits a Thumb-2 `adds r1, r1, #4` form that the
-M0+ assembler refuses (Thumb16 only).
+`bsw-mcal-msp/legacy/hal/hal_system.c:153-174`, the inline assembly
+block inside `hal_system_start_application` (bootloader
+application-jump pattern). The `adds` mnemonic with `s`-suffix is
+**UAL syntax** that requires `.syntax unified`; GCC's inline-asm scaffolding
+emits `.syntax divided` immediately before every inline asm block, so
+the assembler falls back to pre-UAL Thumb-1 grammar where `adds Rd, Rn,
+#imm3` is unrecognised.
 
-Pre-warning from the compiler (`-Warray-bounds`) on the same lines:
+Verified by reproducing standalone (`adds r1, #4`, `adds r2, r1, #4`,
+`adds r1, r1, #4` all reject identically under `-mcpu=cortex-m0plus
+-mthumb`); inspecting the generated `.s` confirms `.syntax divided` is
+active when the inline asm is processed.
 
-```
-hal_system.c:146:56: warning: array subscript 0 is outside array bounds
-  void (*app_reset_handler)(void) = (void (*)(void))(*(uint32_t *)(start_address + 4));
-```
+(The `-Warray-bounds` warnings on line 146 are independent — they
+flag the C-level cast `(uint32_t *)(start_address + 4)` and would
+remain even after the assembly fix; cosmetic, not blocking.)
 
 **Impact**
 
-Blocks `APP_MODEL=rte_os` link: BSW `dispatch.c` calls
-`hal_system_register_tick_callback` / `hal_system_sw_interrupt_trigger`,
+Blocks `APP_MODEL=rte_os` link: BSW `dispatch.c` / `Os.c` reference
+`hal_system_register_tick_callback` and `hal_system_sw_interrupt_trigger`,
 which live in `hal_system.c` — and that TU does not compile for M0+.
 
-**Possible fixes (in order of preference)**
+**Fix (verified standalone)**
 
-1. Gate `hal_system_start_application` / `hal_system_reset` on
-   `#if !defined(__ARM_ARCH_6M__)` — they are bootloader-only paths and
-   M0+ template applications don't need them.
-2. Rewrite the bootloader jump in Thumb16-safe assembly (M0+ does have a
-   working `add` form, but the compiler chooses a Thumb-2 variant for
-   the pointer arithmetic). An explicit `__asm volatile (...)` block
-   with the M0+ instruction encoding would compile.
-3. Split the file: `hal_system.c` (always available) + `hal_bootloader.c`
-   (only compiled for cores that support the jump pattern).
+Smallest diff — keep UAL semantics, prefix the inline asm with a
+syntax directive:
+
+```diff
+   __asm volatile (
++      ".syntax unified\n"
+       "mov r3, %0\n"
+       …
+       "blx r3\n"
++      ".syntax divided\n"
+       :
+```
+
+Alternative — drop the `s` suffix (`adds` → `add`). Equivalent on
+Thumb-1 because low-register `add` implicitly sets flags, and the
+flag side-effect is unused here. Less explicit, so the directive
+approach is preferred.
 
 **Suggested location for the fix**
 
