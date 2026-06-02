@@ -186,17 +186,20 @@ chmod +x bootstrap/bootstrap.sh
 The script will:
 1. Check Python 3.8+ → prompt `brew install python3` if missing
 2. Init BSW + platform MCAL submodules
-3. Download ARM GCC 13.3.rel1 (macOS tar.xz) → `bootstrap/tools/compilers/`
-4. Download Renode portable zip → `bootstrap/tools/renode/`
+3. Download ARM GCC 13.3.rel1 native to this host → `bootstrap/tools/compilers/`
+   (Apple Silicon picks `darwin-arm64`; Intel picks `darwin-x86_64` — no Rosetta needed)
+4. Install Renode — `brew install --cask renode` if Homebrew is present
+   (the cask formula pulls in the .NET 8 runtime); otherwise downloads
+   the matching `.dmg` and mounts it into `bootstrap/tools/renode/`
 5. `pip3 install pyocd cmake ninja robotframework`
 6. Install pyOCD target pack `TexasInstruments.MSPM0G_DFP`
 
-> **Homebrew users** can pre-install the toolchain:
+> **Homebrew users** can pre-install everything:
 > ```bash
-> brew install --cask gcc-arm-embedded
-> brew install cmake ninja
+> brew install --cask gcc-arm-embedded dotnet renode
+> brew install cmake ninja python3
 > ```
-> Then run bootstrap with `--skip-toolchain`.
+> Then run bootstrap with `--skip-toolchain --skip-renode`.
 
 ### Step 3 — Unit Test
 

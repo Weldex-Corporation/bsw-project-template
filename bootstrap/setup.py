@@ -34,16 +34,28 @@ TOOLS_DIR = _WORKSPACE_SHARED if _WORKSPACE_SHARED.exists() else _LOCAL_SHARED
 PLATFORMS_JSON = SCRIPT_DIR / "platforms.json"
 BSW_REPO_URL   = "https://github.com/Weldex-Corporation/bsw.git"
 BSW_PATH       = PROJECT_ROOT / "bsw"
-OS             = platform.system()  # 'Linux', 'Darwin', 'Windows'
+OS             = platform.system()              # 'Linux', 'Darwin', 'Windows'
+ARCH           = platform.machine().lower()     # 'x86_64'|'arm64'|'aarch64'|'amd64'
 
 # ── ARM GCC ───────────────────────────────────────────────────────────────
 
 ARM_GCC_VERSION = "13.3.rel1"
+_ARM_URL_BASE   = ("https://developer.arm.com/-/media/Files/downloads/gnu/"
+                   "13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-")
+# Keyed by (OS, normalised ARCH). ARM ships native arm64 binaries for
+# both Linux (aarch64) and Darwin (arm64) since 13.3.rel1, so Apple
+# Silicon does NOT need Rosetta when this URL set is used.
 ARM_GCC_URLS = {
-    "Linux":   "https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-eabi.tar.xz",
-    "Darwin":  "https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-darwin-x86_64-arm-none-eabi.tar.xz",
-    "Windows": "https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-mingw-w64-i686-arm-none-eabi.zip",
+    ("Linux",   "x86_64"):  f"{_ARM_URL_BASE}x86_64-arm-none-eabi.tar.xz",
+    ("Linux",   "aarch64"): f"{_ARM_URL_BASE}aarch64-arm-none-eabi.tar.xz",
+    ("Darwin",  "x86_64"):  f"{_ARM_URL_BASE}darwin-x86_64-arm-none-eabi.tar.xz",
+    ("Darwin",  "arm64"):   f"{_ARM_URL_BASE}darwin-arm64-arm-none-eabi.tar.xz",
+    ("Windows", "amd64"):   f"{_ARM_URL_BASE}mingw-w64-i686-arm-none-eabi.zip",
+    ("Windows", "x86_64"):  f"{_ARM_URL_BASE}mingw-w64-i686-arm-none-eabi.zip",
 }
+
+def _arm_gcc_url():
+    return ARM_GCC_URLS.get((OS, ARCH))
 
 # ── MinGW-w64 (Windows host compiler for unit tests) ─────────────────────
 # Standalone build from WinLibs (no MSYS2 required)
@@ -55,11 +67,20 @@ MINGW_UCRT_BIN   = MINGW_MSYS2_PATH / "ucrt64/bin"
 # v1.16.0 is the first release with a Windows portable asset; older tags
 # ship only .msi for Windows.
 RENODE_VERSION = "1.16.0"
+# macOS portable assets are .dmg per architecture; Linux is .tar.gz;
+# Windows is .zip. Keyed by (OS, arch) so Apple Silicon and Intel get
+# the right binary.
+_RENODE_BASE = f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}"
 RENODE_URLS = {
-    "Windows": f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode-{RENODE_VERSION}.windows-portable-dotnet.zip",
-    "Linux":   f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode-{RENODE_VERSION}.linux-portable.tar.gz",
-    "Darwin":  f"https://github.com/renode/renode/releases/download/v{RENODE_VERSION}/renode-{RENODE_VERSION}-dotnet.osx-arm64-portable.dmg",
+    ("Windows", "amd64"):   f"{_RENODE_BASE}/renode-{RENODE_VERSION}.windows-portable-dotnet.zip",
+    ("Windows", "x86_64"):  f"{_RENODE_BASE}/renode-{RENODE_VERSION}.windows-portable-dotnet.zip",
+    ("Linux",   "x86_64"):  f"{_RENODE_BASE}/renode-{RENODE_VERSION}.linux-portable.tar.gz",
+    ("Darwin",  "arm64"):   f"{_RENODE_BASE}/renode-{RENODE_VERSION}-dotnet.osx-arm64-portable.dmg",
+    ("Darwin",  "x86_64"):  f"{_RENODE_BASE}/renode-{RENODE_VERSION}-dotnet.osx-x64-portable.dmg",
 }
+
+def _renode_url():
+    return RENODE_URLS.get((OS, ARCH))
 RENODE_WINGET_ID = "Renode.Renode"
 RENODE_LOCAL_DIR = PROJECT_ROOT / "bootstrap" / "tools" / "renode"
 
@@ -242,9 +263,12 @@ def install_arm_gcc():
     if gcc_bin.exists() or shutil.which("arm-none-eabi-gcc"):
         ok(f"ARM GCC {ARM_GCC_VERSION} already available")
         return
-    url = ARM_GCC_URLS.get(OS)
+    url = _arm_gcc_url()
     if not url:
-        warn(f"No ARM GCC URL for OS '{OS}'. Install manually.")
+        warn(f"No ARM GCC URL for OS='{OS}' ARCH='{ARCH}'.")
+        if OS == "Darwin":
+            print("  macOS hint: brew install --cask gcc-arm-embedded")
+            print("              then rerun bootstrap with --skip-toolchain")
         return
     dest_dir = TOOLS_DIR / "gnu-arm" / ARM_GCC_VERSION
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -259,7 +283,7 @@ def install_arm_gcc():
     if not gcc_bin.exists():
         warn(f"ARM GCC binary not found at expected path after extract: {gcc_bin}")
     else:
-        ok("ARM GCC installed")
+        ok(f"ARM GCC installed ({OS}/{ARCH})")
 
 # ── Step 4: MinGW-w64 (Windows only — host compiler for unit tests) ───────
 
@@ -294,6 +318,32 @@ def install_mingw_windows():
 
 # ── Step 5: Renode (SIL emulator) ─────────────────────────────────────────
 
+def _install_renode_dmg(archive, dest):
+    """Mount the Renode .dmg, copy its portable layout to `dest`, and
+    eject. The dmg root typically contains a single folder like
+    `renode_1.16.0_portable` with `bin/`, `scripts/`, etc."""
+    dest.mkdir(parents=True, exist_ok=True)
+    mountpoint = Path(f"/Volumes/renode-bootstrap-{os.getpid()}")
+    attached = False
+    try:
+        run(["hdiutil", "attach", "-nobrowse", "-quiet",
+             "-mountpoint", str(mountpoint), str(archive)])
+        attached = True
+        # Copy everything in the mount root into dest. Use ditto so xattrs
+        # / quarantine flags are preserved correctly on macOS.
+        for entry in mountpoint.iterdir():
+            target = dest / entry.name
+            if target.exists():
+                if target.is_dir():
+                    shutil.rmtree(target)
+                else:
+                    target.unlink()
+            run(["ditto", str(entry), str(target)])
+    finally:
+        if attached:
+            run(["hdiutil", "detach", "-quiet", str(mountpoint)], check=False)
+    flatten_single_top(dest)
+
 def install_renode():
     if shutil.which("renode") or shutil.which("renode-test"):
         ok("Renode already in PATH")
@@ -308,24 +358,47 @@ def install_renode():
             ok("Renode installed via winget")
             return
         warn("winget install Renode failed - falling back to portable zip")
-    # Fallback: download portable zip
-    url = RENODE_URLS.get(OS)
+    # macOS: try Homebrew Cask first — much cleaner than mounting a dmg,
+    # and avoids a system-wide .NET runtime install dance.
+    if OS == "Darwin" and shutil.which("brew"):
+        log("Installing Renode via Homebrew Cask...")
+        result = run(["brew", "install", "--cask", "renode"], check=False)
+        if result.returncode == 0:
+            ok("Renode installed via brew --cask renode")
+            return
+        warn("brew --cask renode failed - falling back to .dmg download")
+    # Fallback: download portable archive matching this OS+arch.
+    url = _renode_url()
     if not url:
-        warn(f"No Renode URL for OS '{OS}'")
+        warn(f"No Renode URL for OS='{OS}' ARCH='{ARCH}'")
         return
     RENODE_LOCAL_DIR.mkdir(parents=True, exist_ok=True)
     archive = RENODE_LOCAL_DIR / url.split("/")[-1]
     download(url, archive)
-    if archive.suffix == ".zip":
+    name = archive.name.lower()
+    if name.endswith(".zip"):
         extract(archive, RENODE_LOCAL_DIR)
         flatten_single_top(RENODE_LOCAL_DIR)
         archive.unlink(missing_ok=True)
         ok(f"Renode (portable) installed at {RENODE_LOCAL_DIR}")
         print(f"  Add to PATH: {RENODE_LOCAL_DIR}")
-    elif archive.suffix == ".deb":
+    elif name.endswith(".tar.gz") or name.endswith(".tar.xz") or name.endswith(".tgz"):
+        extract(archive, RENODE_LOCAL_DIR)
+        flatten_single_top(RENODE_LOCAL_DIR)
+        archive.unlink(missing_ok=True)
+        ok(f"Renode (portable) installed at {RENODE_LOCAL_DIR}")
+        print(f"  Add to PATH: {RENODE_LOCAL_DIR}")
+    elif name.endswith(".dmg"):
+        _install_renode_dmg(archive, RENODE_LOCAL_DIR)
+        archive.unlink(missing_ok=True)
+        ok(f"Renode (portable) installed at {RENODE_LOCAL_DIR}")
+        print(f"  Add to PATH: {RENODE_LOCAL_DIR / 'bin'}")
+    elif name.endswith(".deb"):
         run(["sudo", "dpkg", "-i", str(archive)], check=False)
         archive.unlink(missing_ok=True)
         ok("Renode .deb installed")
+    else:
+        warn(f"Don't know how to unpack Renode archive: {archive.name}")
 
 # ── Step 6: Python packages (pyOCD, cmake, ninja, robotframework) ─────────
 
