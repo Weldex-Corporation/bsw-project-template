@@ -12,7 +12,7 @@ project(bsw_project_template
 set(BOARD        "lp_mspm0g3507" CACHE STRING "Target board (boards/*.yaml)")
 set(BSW_PLATFORM "bsw-mcal-msp"  CACHE STRING "BSW platform submodule")
 set(PYOCD_TARGET "MSPM0G3507"    CACHE STRING "pyOCD target name")
-set(PLATFORM     "mspm0"         CACHE STRING "Build platform — passed to BSW: posix | mspm0 | renode | traveo")
+set(PLATFORM     "mspm0"         CACHE STRING "Build platform — passed to BSW: posix | mspm0 | traveo")
 set(APP_MODEL    "baremetal"     CACHE STRING "App entry model: baremetal | oslite")
 option(BUILD_TESTS "Build unit tests (host build only)" OFF)
 
@@ -35,18 +35,24 @@ if(NOT PLATFORM STREQUAL "posix")
     set(BUILD_EXAMPLES  OFF CACHE BOOL "" FORCE)
     set(BUILD_TESTS     OFF CACHE BOOL "" FORCE)
     set(BUILD_TUTORIALS OFF CACHE BOOL "" FORCE)
-    add_subdirectory(${BSW_DIR})
 
-    # Platform MCAL — sibling submodule (bsw-mcal-<platform>)
-    # Each product repo adds the relevant platform submodule alongside bsw/.
-    # BSW_DIR is passed so bsw-mcal-msp can find contract headers.
-    set(_mcal_dir "${CMAKE_SOURCE_DIR}/bsw-mcal-msp")
-    if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
+    # Platform MCAL — sibling submodule (bsw-mcal-<platform>). Publish
+    # MCAL_MSP_DIR BEFORE add_subdirectory(${BSW_DIR}) so the framework picks
+    # up the sibling path instead of the obsolete bsw/platform/bsw-mcal-msp
+    # fallback (sibling submodule promotion: bsw commit 8e40779).
+    if(PLATFORM STREQUAL "mspm0")
+        set(_mcal_dir "${CMAKE_SOURCE_DIR}/bsw-mcal-msp")
         if(NOT EXISTS "${_mcal_dir}/CMakeLists.txt")
             message(FATAL_ERROR
                 "bsw-mcal-msp submodule not initialized.\n"
                 "Run: git submodule update --init bsw-mcal-msp")
         endif()
+        set(MCAL_MSP_DIR "${_mcal_dir}")
+    endif()
+
+    add_subdirectory(${BSW_DIR})
+
+    if(PLATFORM STREQUAL "mspm0")
         add_subdirectory(${_mcal_dir} bsw_mcal_msp)
     endif()
 endif()
@@ -100,16 +106,15 @@ if(NOT BUILD_TESTS)
     if(NOT PLATFORM STREQUAL "posix" AND NOT _is_periph_test)
         list(APPEND _app_sources src/app_stubs.c)
     endif()
-    # Board layer (mspm0 + renode SIL both target the MSPM0G3507 silicon
-    # model). Provides:
+    # Board layer (mspm0 — both real silicon and Renode SIL targets). Provides:
     #   - Cortex-M0+ startup file (vector table, Reset_Handler) from SDK
     #   - SDK SysConfig + board syscfg_lp.c overrides
     #   - Standalone linker script (vector table at 0x00000000, SRAM at
     #     0x20200000) — shared with the LP launchpad rgb_led_pwm demo.
-    # Renode SIL uses the same startup and linker script as mspm0, but
-    # links mcal_renode instead of mcal_msp/driverlib for HW access.
+    # Renode is a simulator that runs the same mspm0 firmware; it is not a
+    # separate build platform.
     set(_msp_dir "${CMAKE_SOURCE_DIR}/bsw-mcal-msp")
-    if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
+    if(PLATFORM STREQUAL "mspm0")
         list(APPEND _app_sources
             "${_msp_dir}/sdk/ti/devices/msp/m0p/startup_system_files/gcc/startup_mspm0g350x_gcc.c")
         if(NOT _is_periph_test)
@@ -151,7 +156,7 @@ if(NOT BUILD_TESTS)
         target_include_directories(${PROJECT_NAME} PRIVATE
             "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/include")
     endif()
-    if(PLATFORM STREQUAL "mspm0" OR PLATFORM STREQUAL "renode")
+    if(PLATFORM STREQUAL "mspm0")
         # Include paths for syscfg_lp.c + ti_msp_dl_config.c + startup file
         # to find ti_msp_dl_config.h and the SDK headers.
         target_include_directories(${PROJECT_NAME} PRIVATE
@@ -178,14 +183,12 @@ if(NOT BUILD_TESTS)
     # provided directly by mcal_<platform>.
     # periph_test uses TI driverlib directly; no BSW or MCAL layer is linked.
     if(_is_periph_test)
-        # driverlib-only; ti_driverlib already linked above via the mspm0/renode block
+        # driverlib-only; ti_driverlib already linked above via the mspm0 block
     elseif(PLATFORM STREQUAL "mspm0")
         # mspm0: mcal_msp (from bsw-mcal-msp submodule) ships the full AUTOSAR
         # contract (Dio_Hw.c, …) AND the low-level hal_*.c for this platform.
         # mcal_mspm0 (in BSW framework) provides only mcal/mspm0/*_Hw.c overrides.
         target_link_libraries(${PROJECT_NAME} PRIVATE bsw mcal_mspm0 mcal_msp)
-    elseif(PLATFORM STREQUAL "renode")
-        target_link_libraries(${PROJECT_NAME} PRIVATE bsw mcal_renode)
     elseif(PLATFORM STREQUAL "traveo")
         # Traveo target hookup left for the platform owner; mcal_traveo is the
         # BSW-side stub. The Infineon PDL target name to link is project-specific.
@@ -193,7 +196,7 @@ if(NOT BUILD_TESTS)
     elseif(PLATFORM STREQUAL "posix")
         target_include_directories(${PROJECT_NAME} PRIVATE tests/mock)
     else()
-        message(FATAL_ERROR "Unknown PLATFORM=${PLATFORM} (expected: posix | mspm0 | renode | traveo)")
+        message(FATAL_ERROR "Unknown PLATFORM=${PLATFORM} (expected: posix | mspm0 | traveo)")
     endif()
 
     # Post-build artefacts (skip for host build — objcopy is bare-metal only)

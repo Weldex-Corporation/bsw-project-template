@@ -18,7 +18,7 @@ Resource          ${RENODEKEYWORDS}
 
 *** Variables ***
 ${ELF}           ${CURDIR}/../build/renode-driverlib-periph/bsw_project_template.elf
-${MODELS_DIR}    ${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/models
+${MODELS_DIR}    ${CURDIR}/../bsw-mcal-msp/renode/models
 ${SVT_ADDR}      0x40556280
 ${GPIOB_DOUT}    0x400A3280
 

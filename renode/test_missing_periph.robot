@@ -28,7 +28,7 @@ Resource          ${RENODEKEYWORDS}
 
 *** Variables ***
 ${ELF}              ${CURDIR}/../build/renode-driverlib-missing-periph/bsw_project_template.elf
-${MODELS_DIR}       ${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/models
+${MODELS_DIR}       ${CURDIR}/../bsw-mcal-msp/renode/models
 # UART0 test-hook registers (model-specific, not in real HW)
 ${UART0_TXBUF_LEN}    0x40109FFC
 ${UART0_TXBUF_DRAIN}    0x40109FF8

@@ -15,7 +15,7 @@ Resource          ${RENODEKEYWORDS}
 
 *** Variables ***
 ${ELF}          ${CURDIR}/../build/renode-driverlib/bsw_project_template.elf
-${MODELS_DIR}   ${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/models
+${MODELS_DIR}   ${CURDIR}/../bsw-mcal-msp/renode/models
 ${DOUT_ADDR}    0x400A1280
 ${DIN_ADDR}     0x400A1380
 ${LED_PIN}      0

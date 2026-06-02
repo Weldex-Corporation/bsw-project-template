@@ -26,7 +26,7 @@ Resource          ${RENODEKEYWORDS}
 
 *** Variables ***
 ${ELF}              ${CURDIR}/../build/renode-driverlib-timg-test/bsw_project_template.elf
-${MODELS_DIR}       ${CURDIR}/../bsw/platform/bsw-mcal-msp/renode/models
+${MODELS_DIR}       ${CURDIR}/../bsw-mcal-msp/renode/models
 # ADC1 SVT pre-inject address (ADC1_PERIPHERALREGIONSVT + 0x280)
 ${ADC1_SVT_MEMRES0}    0x40558280
 # Result slots
