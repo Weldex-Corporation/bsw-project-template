@@ -103,9 +103,6 @@ if(NOT BUILD_TESTS)
             src/led_blink.c
         )
     endif()
-    if(NOT PLATFORM STREQUAL "posix" AND NOT _is_periph_test)
-        list(APPEND _app_sources src/app_stubs.c)
-    endif()
     # Board layer (mspm0 — both real silicon and Renode SIL targets). Provides:
     #   - Cortex-M0+ startup file (vector table, Reset_Handler) from SDK
     #   - SDK SysConfig + board syscfg_lp.c overrides
