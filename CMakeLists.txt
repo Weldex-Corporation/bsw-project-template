@@ -96,12 +96,16 @@ if(NOT BUILD_TESTS)
         set(_is_periph_test ON)
     endif()
     if(NOT _is_periph_test)
-        # Shared application sources (baremetal + oslite only)
+        # Application SWCs + per-style RTE backend + hand-written Cfg.
+        # SWCs are bit-identical across baremetal / oslite / rte_os; the
+        # selected RTE backend is the only thing that differs.
         list(APPEND _app_sources
-            src/app_tasks.c
-            src/app_mode.c
-            src/led_blink.c
+            src/swc/Swc_ModeSelector.c
+            src/swc/Swc_LedBlink.c
+            src/cfg/Port_Cfg.c
+            src/cfg/Dio_Cfg.c
         )
+        list(APPEND _app_sources src/rte/static/Rte_Impl.c)
     endif()
     # Board layer (mspm0 — both real silicon and Renode SIL targets). Provides:
     #   - Cortex-M0+ startup file (vector table, Reset_Handler) from SDK
@@ -149,6 +153,13 @@ if(NOT BUILD_TESTS)
         target_compile_definitions(mcal_msp PUBLIC LP_MSPM0G3507)
     endif()
     add_executable(${PROJECT_NAME} ${_app_sources})
+    if(NOT _is_periph_test)
+        # App-side include paths (SWC + Rte + Cfg) for baremetal/oslite/rte_os.
+        target_include_directories(${PROJECT_NAME} PRIVATE
+            "${CMAKE_SOURCE_DIR}/src/swc"
+            "${CMAKE_SOURCE_DIR}/src/rte"
+            "${CMAKE_SOURCE_DIR}/src/cfg")
+    endif()
     if(APP_MODEL STREQUAL "oslite")
         target_include_directories(${PROJECT_NAME} PRIVATE
             "${CMAKE_SOURCE_DIR}/bsw-mcal-msp/include")
