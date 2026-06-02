@@ -9,6 +9,7 @@ typedef enum {
 } LedBlink_State_t;
 
 void             LedBlink_Init(void);
+void             LedBlink_SetPeriod(uint32_t period_ms);
 void             LedBlink_Tick(uint32_t elapsed_ms);
 LedBlink_State_t LedBlink_GetState(void);
 

@@ -3,7 +3,7 @@
   "configurePresets": [
     {
       "name": "bsw-mcal-msp",
-      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507)",
+      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507, bare-metal)",
       "generator": "Ninja",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
       "binaryDir": "${sourceDir}/build/bsw-mcal-msp",
@@ -11,6 +11,23 @@
         "PLATFORM":          "mspm0",
         "BOARD":             "lp_mspm0g3507",
         "BSW_PLATFORM":      "bsw-mcal-msp",
+        "APP_MODEL":         "baremetal",
+        "PYOCD_TARGET":      "MSPM0G3507",
+        "BUILD_TESTS":       "OFF",
+        "CMAKE_BUILD_TYPE":  "Release"
+      }
+    },
+    {
+      "name": "bsw-mcal-msp-oslite",
+      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507, Os_Lite)",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/bsw-mcal-msp-oslite",
+      "cacheVariables": {
+        "PLATFORM":          "mspm0",
+        "BOARD":             "lp_mspm0g3507",
+        "BSW_PLATFORM":      "bsw-mcal-msp",
+        "APP_MODEL":         "oslite",
         "PYOCD_TARGET":      "MSPM0G3507",
         "BUILD_TESTS":       "OFF",
         "CMAKE_BUILD_TYPE":  "Release"
@@ -29,24 +46,95 @@
       }
     },
     {
-      "name": "renode-sil",
-      "displayName": "SIL — Renode ARM Emulator",
+      "name": "renode-driverlib",
+      "displayName": "SIL — Renode + TI driverlib (bare-metal, real register addresses)",
       "generator": "Ninja",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
-      "binaryDir": "${sourceDir}/build/renode-sil",
+      "binaryDir": "${sourceDir}/build/renode-driverlib",
       "cacheVariables": {
-        "PLATFORM":         "renode",
+        "PLATFORM":         "mspm0",
         "BOARD":            "lp_mspm0g3507",
         "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "baremetal",
+        "PYOCD_TARGET":     "MSPM0G3507",
+        "BUILD_TESTS":      "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "renode-driverlib-missing-periph",
+      "displayName": "SIL — Renode UART/DMA/WWDT/TIMG7/TIMG8 model test",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/renode-driverlib-missing-periph",
+      "cacheVariables": {
+        "PLATFORM":         "mspm0",
+        "BOARD":            "lp_mspm0g3507",
+        "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "missing_periph_test",
+        "PYOCD_TARGET":     "MSPM0G3507",
+        "BUILD_TESTS":      "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "renode-driverlib-timg-test",
+      "displayName": "SIL — Renode TIMG0/TIMG6/TIMG12 IRQ model test + ADC1",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/renode-driverlib-timg-test",
+      "cacheVariables": {
+        "PLATFORM":         "mspm0",
+        "BOARD":            "lp_mspm0g3507",
+        "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "timg_test",
+        "PYOCD_TARGET":     "MSPM0G3507",
+        "BUILD_TESTS":      "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "renode-driverlib-fullperiph",
+      "displayName": "SIL — Renode all-peripheral model test (raw MMIO)",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/renode-driverlib-fullperiph",
+      "cacheVariables": {
+        "PLATFORM":         "mspm0",
+        "BOARD":            "lp_mspm0g3507",
+        "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "fullperiph_test",
+        "PYOCD_TARGET":     "MSPM0G3507",
+        "BUILD_TESTS":      "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "renode-driverlib-periph",
+      "displayName": "SIL — Renode + TI driverlib (ADC/PWM peripheral test)",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/renode-driverlib-periph",
+      "cacheVariables": {
+        "PLATFORM":         "mspm0",
+        "BOARD":            "lp_mspm0g3507",
+        "BSW_PLATFORM":     "bsw-mcal-msp",
+        "APP_MODEL":        "periph_test",
+        "PYOCD_TARGET":     "MSPM0G3507",
         "BUILD_TESTS":      "OFF",
         "CMAKE_BUILD_TYPE": "Debug"
       }
     }
   ],
   "buildPresets": [
-    { "name": "bsw-mcal-msp",  "configurePreset": "bsw-mcal-msp" },
-    { "name": "host-test",     "configurePreset": "host-test" },
-    { "name": "renode-sil",    "configurePreset": "renode-sil" }
+    { "name": "bsw-mcal-msp",        "configurePreset": "bsw-mcal-msp" },
+    { "name": "bsw-mcal-msp-oslite", "configurePreset": "bsw-mcal-msp-oslite" },
+    { "name": "host-test",           "configurePreset": "host-test" },
+    { "name": "renode-driverlib",         "configurePreset": "renode-driverlib" },
+    { "name": "renode-driverlib-periph",         "configurePreset": "renode-driverlib-periph" },
+    { "name": "renode-driverlib-fullperiph",     "configurePreset": "renode-driverlib-fullperiph" },
+    { "name": "renode-driverlib-missing-periph", "configurePreset": "renode-driverlib-missing-periph" },
+    { "name": "renode-driverlib-timg-test",     "configurePreset": "renode-driverlib-timg-test" }
   ],
   "testPresets": [
     {

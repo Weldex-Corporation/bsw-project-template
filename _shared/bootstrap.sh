@@ -6,7 +6,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo ""
-echo "[bootstrap] BSW Project Template — macOS/Linux Setup"
+if [ -d /srv/workspaces/_shared ]; then
+    echo "[bootstrap] BSW Project Template — ELM server setup"
+else
+    echo "[bootstrap] BSW Project Template — macOS/Linux Setup"
+fi
 
 # ── Python check ──────────────────────────────────────────────────────────────
 PYTHON=""
@@ -35,4 +39,8 @@ fi
 
 # ── Run setup.py ─────────────────────────────────────────────────────────────
 echo "[bootstrap] Running setup.py..."
-exec "$PYTHON" "$SCRIPT_DIR/setup.py" "$@"
+"$PYTHON" "$SCRIPT_DIR/setup.py" "$@"
+
+echo ""
+echo "[bootstrap] Next step — load tool PATHs in your shell:"
+echo "    source $SCRIPT_DIR/env-setup.sh"

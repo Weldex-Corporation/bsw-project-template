@@ -3,6 +3,8 @@
 #include <stdint.h>
 typedef uint8_t  Std_ReturnType;
 typedef uint8_t  boolean;
+#define TRUE      1u
+#define FALSE     0u
 #define STD_HIGH  1u
 #define STD_LOW   0u
 #define E_OK      0u
