@@ -180,38 +180,21 @@ support in `_shared/setup.py` (option 3).
 
 ---
 
-## 5. (Watching) `bsw-mcal-msp` — Renode TIMG7 model doesn't fire time-based IRQ
+## 5. ✅ `bsw-mcal-msp` — Renode TIMG7 model time-based IRQ — RESOLVED
 
-**Symptom (SIL-only, real silicon unaffected)**
+**Status**: Fixed in
+[bsw-mcal-msp@76224df](https://github.com/Weldex-Corporation/bsw-mcal-msp/commit/76224df).
+The Python LimitTimer needed (a) `enabled=True` + `WorkMode.Periodic`
+through the constructor, not via property setters, and (b) a strong
+reference to the `System.Action`-wrapped Python callback so IronPython
+doesn't GC it while the timer still references it. Plus the NVIC pulse
+had to go through `OnGPIO(True/False)` rather than `SetPendingIRQ` to
+actually reach the CPU from a Python callback.
 
-`renode/models/mspm0_timg7.py` correctly models register writes from
-`Gpt_Init` / `Gpt_StartTimer` (PWREN / CPS / IMASK / CTRCTL=EN|REPEAT /
-LOAD all latch as expected) but the time-based fire path never
-delivers an IRQ to NVIC. `os_counter_ms` therefore stays at 0 in the
-rte_os SIL even though the firmware is configured correctly.
-
-The software-trigger (ISET) path inside the same model works —
-`test_missing_periph.robot` exercises it. Only the time-based
-`ScheduleAction` / `LimitTimer` paths are broken.
-
-**Impact**
-
-SIL coverage of any periodic-tick firmware (rte_os, oslite) is
-incomplete. Real-silicon and bare-metal builds are unaffected
-because TI driverlib programs the actual TIMG7 IP which fires for
-real on a LaunchPad.
-
-**Suggested fix**
-
-See `docs/renode-timg7-model-gap.md` — the cleanest fix is to add a
-native Renode `LimitTimer` in `mspm0g3507.repl` wired to NVIC IRQ 20.
-The Python model continues to handle register state; the native timer
-handles IRQ generation. A heavier alternative is to rewrite the model
-as a proper C# peripheral.
-
-**Suggested location for the fix**
-
-`bsw-mcal-msp` repo, `renode/mspm0g3507.repl` + `renode/models/`.
+`renode/test_rte_os_boot.robot` now drives the system tick from pure
+virtual time -- 200 ms of `RunFor` advances `os_counter_ms` to 199.
+See `docs/renode-timg7-model-gap.md` (kept as a postmortem) for the
+debugging walk-through that landed the fix.
 
 ---
 

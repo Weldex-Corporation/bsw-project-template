@@ -1,8 +1,7 @@
 # Renode mspm0_timg7.py — time-based IRQ gap
 
-Status: open. Affects SIL coverage of any firmware that relies on
-TIMG7 firing periodic interrupts (rte_os, oslite, anything driven by
-the Gpt MCAL system tick).
+Status: **RESOLVED** in bsw-mcal-msp@76224df. This document is kept as
+a debugging postmortem.
 
 ## Symptom
 
@@ -47,31 +46,31 @@ Most likely failure mode (not yet confirmed):
     delegate the timer is holding points at the *old* function whose
     closure is no longer wired to live module state.
 
-## Workarounds
+## Fix (landed)
 
-For now, the rte_os refactor PRs (#209 / #5 / #38) link cleanly and
-the test SIL gap is documented (`test_rte_os_diag.robot` records the
-full register snapshot). Real-silicon (LP-MSPM0G3507) and bare-metal
-LimitTimer-based projects on the same chip are not affected because
-TI driverlib programs the actual TIMG7 IP, which fires for real.
+bsw-mcal-msp@76224df, `renode/models/mspm0_timg7.py`. Two corrections
+were needed for the LimitTimer + delegate to actually run:
 
-Three possible follow-ups, roughly in increasing effort:
+  1. **Constructor flags, not property setters.** Setting `Enabled =
+     True` and `AutoUpdate = True` AFTER construction left the timer
+     disarmed. Passing `enabled=True` and `WorkMode.Periodic` as
+     constructor arguments fixes it.
 
-  1. **Native `.repl` timer.** Add a top-level `LimitTimer` peripheral
-     to `bsw-mcal-msp/renode/mspm0g3507.repl` (or a dedicated
-     `rte_os.repl` overlay) and wire its `IRQ -> nvic@20`. The Python
-     model continues to handle register state; the native LimitTimer
-     handles IRQ generation. Cleanest from a Renode standpoint.
+  2. **Strong reference to the delegate.** `timer.LimitReached += _do_fire`
+     wraps the Python callable into a delegate; if the script's
+     locals go out of scope the delegate is GC'd while the timer
+     still holds it. Storing the wrapped `System.Action(_do_fire)`
+     in module-level state keeps the reference alive.
 
-  2. **C# peripheral.** Rewrite `mspm0_timg7` as a proper C# peripheral
-     in `Antmicro.Renode.Peripherals.MSPM0`. This is the official way
-     and removes the IronPython delegate friction entirely. Heaviest.
+A third, smaller fix in the same commit: NVIC pulse goes through
+`OnGPIO(True)/OnGPIO(False)` instead of `SetPendingIRQ(...)`. Only the
+former actually delivers the IRQ to the CPU from a Python callback
+under the IronPython runtime Renode embeds.
 
-  3. **Polling shim inside the firmware** (NOT recommended). Have the
-     idle loop poll `Gpt_GetPredefTimerValue` and call
-     `Os_IncrementCounter` manually. Defeats the architecture and only
-     papers over the SIL issue, so this is documented only to be
-     rejected.
+After the fix, the diagnostic in `test_rte_os_diag.robot` shows
+`dbg_sched = 200`, `dbg_arm = 200`, `dbg_fire = 199` over 200 ms of
+emulation, and the rte_os boot test's `os_counter_ms` advances on
+pure virtual time -- no manual IRQ injection from Robot needed.
 
 ## Related
 
