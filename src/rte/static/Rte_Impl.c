@@ -31,7 +31,11 @@ Std_ReturnType Rte_Write_Mode_Value(Rte_AppMode_t m)
 
 Std_ReturnType Rte_Write_LedState_Value(Rte_LedState_t s)
 {
+#ifdef DIO_LED_GREEN_ACTIVE_LOW
+    Dio_WriteChannel(DIO_CH_LED_GREEN, (s == RTE_LED_ON) ? STD_LOW : STD_HIGH);
+#else
     Dio_WriteChannel(DIO_CH_LED_GREEN, (s == RTE_LED_ON) ? STD_HIGH : STD_LOW);
+#endif
     return RTE_E_OK;
 }
 

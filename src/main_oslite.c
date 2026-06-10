@@ -12,8 +12,6 @@
  *   ModeSelector — 20 ms (matches the debounce window)
  *   LedBlink     — 20 ms (fastest blink mode is 100 ms → 5x oversample)
  */
-#ifdef OS_USE_LITE
-
 #include "Os_Lite.h"
 #include "Mcu.h"
 #include "Dio.h"
@@ -43,5 +41,3 @@ int main(void)
     Os_Start();
     return 0;
 }
-
-#endif /* OS_USE_LITE */

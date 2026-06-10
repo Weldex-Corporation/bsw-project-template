@@ -1,7 +1,7 @@
 /**
  * Rte_Ports.h — common RTE port types + IDs.
  *
- * Shared across all three integration styles (baremetal / oslite / rte_os).
+ * Shared across all three integration styles (baremetal / oslite / osrte).
  * The *implementation* of the named-port API (Rte_Read_*_Value /
  * Rte_Write_*_Value) lives in style-specific headers under rte/static/ or
  * rte/bsw/. Only the data contract is here.

@@ -16,6 +16,7 @@ port:
     name:      LED_GREEN
     direction: OUTPUT
     initial:   LOW
+    polarity:  ACTIVE_HIGH
     pull:      NONE
   - pin:       PB22
     name:      LED_BLUE
@@ -33,7 +34,7 @@ port:
     pull:      UP
 
 uart:
-  - instance:  UART0
+  - instance:  0
     tx_pin:    PA10
     rx_pin:    PA11
     baudrate:  115200

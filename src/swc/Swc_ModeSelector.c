@@ -16,7 +16,7 @@ static boolean        s_armed;
 
 void SwcModeSelector_Init(void)
 {
-    s_mode        = RTE_MODE_OFF;
+    s_mode        = RTE_MODE_BLINK_500MS;
     s_debounce_ms = 0u;
     s_armed       = TRUE;
     (void)Rte_Write_Mode_Value(s_mode);

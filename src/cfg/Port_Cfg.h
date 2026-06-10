@@ -1,20 +1,24 @@
 /**
- * Port_Cfg.h — LP-MSPM0G3507 pin configuration (hand-written).
+ * Port_Cfg.h — Pin configuration (hand-written).
  *
- * Traceable to:  boards/lp_mspm0g3507.yaml  (SWE.1 HW interface).
  * Pin encoding:  port idx (0=GPIOA, 1=GPIOB) in upper byte, pin idx in lower.
  *
  * Pins used by the LED-blink demo:
- *   PA0  — LED_GREEN  (output, active HIGH)
- *   PA14 — BTN_S2     (input, active LOW, internal pull-up)
+ *   LED_GREEN — PA0 (LP-MSPM0G3507) or PA22 (LP-MSPM0C1104)
+ *   BTN_S2    — PB21 (LP-MSPM0G3507) or PA16 (LP-MSPM0C1104)
  */
 #ifndef PORT_CFG_H
 #define PORT_CFG_H
 
 #include "Port.h"
 
-#define PORT_PIN_PA0_LED_GREEN   ((Port_PinType)((0u << 8u) | 0u))
-#define PORT_PIN_PB21_BTN_S2     ((Port_PinType)((1u << 8u) | 21u))
+#ifdef BOARD_LP_MSPM0C1104
+#define PORT_PIN_PA0_LED_GREEN   ((Port_PinType)((0u << 8u) | 22u))  /* PA22 */
+#define PORT_PIN_BTN_S2          ((Port_PinType)((0u << 8u) | 16u))  /* PA16 */
+#else
+#define PORT_PIN_PA0_LED_GREEN   ((Port_PinType)((0u << 8u) | 0u))   /* PA0  */
+#define PORT_PIN_BTN_S2          ((Port_PinType)((1u << 8u) | 21u))  /* PB21 */
+#endif
 
 extern const Port_ConfigType Port_Config;
 

@@ -19,7 +19,7 @@
     },
     {
       "name": "bsw-mcal-msp-rte",
-      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507, AUTOSAR RTE + Os)",
+      "displayName": "Firmware — TI MSPM0G (LP-MSPM0G3507, AUTOSAR Os + RTE)",
       "generator": "Ninja",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
       "binaryDir": "${sourceDir}/build/bsw-mcal-msp-rte",
@@ -27,7 +27,7 @@
         "PLATFORM":          "mspm0",
         "BOARD":             "lp_mspm0g3507",
         "BSW_PLATFORM":      "bsw-mcal-msp",
-        "APP_MODEL":         "rte_os",
+        "APP_MODEL":         "osrte",
         "PYOCD_TARGET":      "MSPM0G3507",
         "BUILD_TESTS":       "OFF",
         "CMAKE_BUILD_TYPE":  "Release"
@@ -45,6 +45,79 @@
         "BSW_PLATFORM":      "bsw-mcal-msp",
         "APP_MODEL":         "oslite",
         "PYOCD_TARGET":      "MSPM0G3507",
+        "BUILD_TESTS":       "OFF",
+        "CMAKE_BUILD_TYPE":  "Release"
+      }
+    },
+    {
+      "name": "c1104-fw-cfg",
+      "hidden": true,
+      "description": "MSPM0C1104 framework config — 1 KiB SRAM budget",
+      "cacheVariables": {
+        "FW_HEAP_SIZE":              "128",
+        "FW_OS_IDLE_STACK_SIZE":     "128",
+        "FW_OS_STACK_SIZE":          "128",
+        "FW_MAX_TASKS":              "4",
+        "FW_MAX_EVENTS":             "4",
+        "FW_DBG_QUEUE_SIZE":         "64",
+        "FW_DBG_BUF_SIZE":           "32",
+        "FW_RTE_MAX_PORTS":          "4",
+        "FW_RTE_MAX_PORT_DATA_SIZE": "4",
+        "FW_BUFFER_SIZE_UP":         "64",
+        "FW_BUFFER_SIZE_DOWN":       "4",
+        "FW_PORT_MAX_PINS":          "8",
+        "FW_ISOTP_BUFFER_SIZE":      "128",
+        "FW_J1939_MESSAGE_POOL_SIZE":"2",
+        "FW_J1939_MESSAGE_DATA_SIZE":"64"
+      }
+    },
+    {
+      "name": "bsw-mcal-msp-c1104",
+      "displayName": "Firmware — TI MSPM0C (LP-MSPM0C1104, bare-metal)",
+      "inherits": "c1104-fw-cfg",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/bsw-mcal-msp-c1104",
+      "cacheVariables": {
+        "PLATFORM":          "mspm0",
+        "BOARD":             "lp_mspm0c1104",
+        "BSW_PLATFORM":      "bsw-mcal-msp",
+        "APP_MODEL":         "baremetal",
+        "PYOCD_TARGET":      "MSPM0C1104",
+        "BUILD_TESTS":       "OFF",
+        "CMAKE_BUILD_TYPE":  "Release"
+      }
+    },
+    {
+      "name": "bsw-mcal-msp-c1104-oslite",
+      "displayName": "Firmware — TI MSPM0C (LP-MSPM0C1104, Os_Lite)",
+      "inherits": "c1104-fw-cfg",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/bsw-mcal-msp-c1104-oslite",
+      "cacheVariables": {
+        "PLATFORM":          "mspm0",
+        "BOARD":             "lp_mspm0c1104",
+        "BSW_PLATFORM":      "bsw-mcal-msp",
+        "APP_MODEL":         "oslite",
+        "PYOCD_TARGET":      "MSPM0C1104",
+        "BUILD_TESTS":       "OFF",
+        "CMAKE_BUILD_TYPE":  "Release"
+      }
+    },
+    {
+      "name": "bsw-mcal-msp-c1104-rte",
+      "displayName": "Firmware — TI MSPM0C (LP-MSPM0C1104, AUTOSAR Os + RTE)",
+      "inherits": "c1104-fw-cfg",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "binaryDir": "${sourceDir}/build/bsw-mcal-msp-c1104-rte",
+      "cacheVariables": {
+        "PLATFORM":          "mspm0",
+        "BOARD":             "lp_mspm0c1104",
+        "BSW_PLATFORM":      "bsw-mcal-msp",
+        "APP_MODEL":         "osrte",
+        "PYOCD_TARGET":      "MSPM0C1104",
         "BUILD_TESTS":       "OFF",
         "CMAKE_BUILD_TYPE":  "Release"
       }
@@ -146,6 +219,9 @@
     { "name": "bsw-mcal-msp",        "configurePreset": "bsw-mcal-msp" },
     { "name": "bsw-mcal-msp-oslite", "configurePreset": "bsw-mcal-msp-oslite" },
     { "name": "bsw-mcal-msp-rte",    "configurePreset": "bsw-mcal-msp-rte" },
+    { "name": "bsw-mcal-msp-c1104",        "configurePreset": "bsw-mcal-msp-c1104" },
+    { "name": "bsw-mcal-msp-c1104-oslite", "configurePreset": "bsw-mcal-msp-c1104-oslite" },
+    { "name": "bsw-mcal-msp-c1104-rte",    "configurePreset": "bsw-mcal-msp-c1104-rte" },
     { "name": "host-test",           "configurePreset": "host-test" },
     { "name": "renode-driverlib",         "configurePreset": "renode-driverlib" },
     { "name": "renode-driverlib-periph",         "configurePreset": "renode-driverlib-periph" },

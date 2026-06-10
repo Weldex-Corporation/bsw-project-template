@@ -1,0 +1,33 @@
+# LP-MSPM0C1104 LaunchPad EVM — LED Blink Template
+#
+# Pinout (LP-MSPM0C1104 schematic):
+#   PA22 — LED1       (GPIO output, active LOW)
+#   PA16 — BTN_S2     (GPIO input, active LOW, internal pull-up)
+#   PA17 — UART0_TX
+#   PA18 — UART0_RX
+
+board: LP_MSPM0C1104
+chip:  MSPM0C1104
+
+port:
+  - pin:       PA22
+    name:      LED_GREEN
+    direction: OUTPUT
+    initial:   LOW
+    polarity:  ACTIVE_LOW
+    pull:      NONE
+  - pin:       PA16
+    name:      BTN_S2
+    direction: INPUT
+    pull:      UP
+
+uart:
+  - instance:  0
+    tx_pin:    PA17
+    rx_pin:    PA18
+    baudrate:  115200
+
+mcu:
+  tick_timer: TIMG14
+  cpu:        cortex-m0plus
+  clock_hz:   24000000

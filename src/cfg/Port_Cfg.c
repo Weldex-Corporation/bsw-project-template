@@ -1,5 +1,5 @@
 /**
- * Port_Cfg.c — Port_Config for LP-MSPM0G3507.
+ * Port_Cfg.c — Port_Config for LP-MSPM0G3507 / LP-MSPM0C1104.
  *
  * Direction + initial mode for each pin used by the application.
  * Actual MMIO programming happens in syscfg_lp.c (SYSCFG_DL_initPower);
@@ -16,7 +16,7 @@ static const Port_PinConfigType s_pins[] = {
         .modeChangeable       = FALSE,
     },
     {
-        .pin                  = PORT_PIN_PB21_BTN_S2,
+        .pin                  = PORT_PIN_BTN_S2,
         .direction            = PORT_PIN_IN,
         .initialMode          = PORT_PIN_MODE_GPIO,
         .directionChangeable  = FALSE,
